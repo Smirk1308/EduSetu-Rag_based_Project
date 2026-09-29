@@ -5,6 +5,8 @@ while tracking per-model usage to avoid hitting rate limits.
 """
 
 import os
+import re
+import time
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -112,7 +114,6 @@ TIER_CANDIDATE_POOLS = {
     "complex": [
         "gemini-3.8-flash",
         "gemini-3.6-flash",
-        "gemini-3.7-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
@@ -206,11 +207,55 @@ def _init_usage():
             st.session_state.active_model_id = "gemini-3.5-flash-lite"
         if "exhausted_models" not in st.session_state:
             st.session_state.exhausted_models = set()
+        if "model_cooldowns" not in st.session_state:
+            st.session_state.model_cooldowns = {}
+
+
+def _clear_expired_cooldowns(now: float | None = None) -> None:
+    """Remove models whose provider retry window has elapsed."""
+    if not hasattr(st, "session_state"):
+        return
+    now = time.time() if now is None else now
+    cooldowns = st.session_state.get("model_cooldowns", {})
+    active = {model: expiry for model, expiry in cooldowns.items() if expiry > now}
+    st.session_state.model_cooldowns = active
+    # Kept as a compatibility view for existing UI and callers.
+    st.session_state.exhausted_models = set(active)
+
+
+def record_model_usage(model_id: str, tier: str | None = None) -> None:
+    """Record a request only after the provider has accepted it."""
+    if not hasattr(st, "session_state") or model_id not in MODEL_FLEET:
+        return
+    _init_usage()
+    usage = st.session_state.model_usage
+    usage[model_id] = usage.get(model_id, 0) + 1
+    resolved_tier = tier or MODEL_FLEET[model_id]["tier"]
+    usage[resolved_tier] = usage.get(resolved_tier, 0) + 1
+
+
+def mark_model_cooldown(model_id: str, error_text: str, now: float | None = None) -> None:
+    """Temporarily bypass a failed model, respecting provider retry hints."""
+    if not hasattr(st, "session_state") or model_id not in MODEL_FLEET:
+        return
+    _init_usage()
+    lowered = error_text.lower()
+    # A missing model is unlikely to recover immediately; rate limits should.
+    default_seconds = 3600 if ("404" in lowered or "not_found" in lowered) else 60
+    match = re.search(r"(?:retry(?:\s+after|\s+in)?|retry_delay[^\d]*)\s*(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?", lowered)
+    retry_seconds = float(match.group(1)) if match else default_seconds
+    retry_seconds = min(max(retry_seconds, 15), 3600)
+    current_time = time.time() if now is None else now
+    cooldowns = dict(st.session_state.get("model_cooldowns", {}))
+    cooldowns[model_id] = current_time + retry_seconds
+    st.session_state.model_cooldowns = cooldowns
+    _clear_expired_cooldowns(current_time)
 
 
 def get_routed_model_info(query: str = "", history_length: int = 0) -> dict:
     """Return model tier, ID, max tokens, and metadata dynamically balanced across the active fleet."""
     _init_usage()
+    _clear_expired_cooldowns()
     tier = classify_complexity(query, history_length)
 
     candidates = TIER_CANDIDATE_POOLS.get(tier, TIER_CANDIDATE_POOLS["simple"])
@@ -278,9 +323,6 @@ def get_routed_model_info(query: str = "", history_length: int = 0) -> dict:
     if hasattr(st, "session_state"):
         st.session_state.active_model_tier = tier
         st.session_state.active_model_id = selected_model
-        st.session_state.model_usage[selected_model] = usage.get(selected_model, 0) + 1
-        st.session_state.model_usage[tier] = usage.get(tier, 0) + 1
-
     return {
         "tier": tier,
         "model_id": selected_model,
@@ -384,4 +426,3 @@ def render_query_info(query: str, history_length: int = 0):
         f"{actual_cfg['emoji']} **{actual_cfg['label']}** "
         f"· `{actual_model_id}` · Complexity: *{actual_tier.capitalize()}*"
     )
-

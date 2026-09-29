@@ -19,6 +19,8 @@ from model_router import (
     classify_complexity,
     is_multilingual_query,
     get_routed_model_info,
+    mark_model_cooldown,
+    record_model_usage,
 )
 
 
@@ -33,6 +35,7 @@ class TestModelRouterFleet(unittest.TestCase):
             st.session_state.active_model_tier = "simple"
             st.session_state.active_model_id = "gemini-3.5-flash-lite"
             st.session_state.exhausted_models = set()
+            st.session_state.model_cooldowns = {}
             st.session_state.selected_language = "English"
 
     def test_01_fleet_catalog_specifications(self):
@@ -86,7 +89,11 @@ class TestModelRouterFleet(unittest.TestCase):
         info1 = get_routed_model_info("Hi")
         self.assertIn(info1["model_id"], ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"])
 
-        # Next query should choose the other model because the first one has higher usage
+        # Routing itself must not consume quota; record usage only after a provider accepts a request.
+        self.assertEqual(st.session_state.model_usage[info1["model_id"]], 0)
+        record_model_usage(info1["model_id"], info1["tier"])
+
+        # Next query should choose the other model because the first one has higher usage.
         info2 = get_routed_model_info("What is EduSetu?")
         self.assertIn(info2["model_id"], ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"])
         self.assertNotEqual(info1["model_id"], info2["model_id"], "Simple queries should balance across both lite models")
@@ -100,9 +107,12 @@ class TestModelRouterFleet(unittest.TestCase):
         self.assertEqual(info["max_tokens"], 4500)
 
     def test_05_exhausted_model_auto_bypass(self):
-        """Test that if 3.8-flash and 3.7-flash hit 429 quota, the router immediately bypasses them."""
-        st.session_state.exhausted_models.add("gemini-3.8-flash")
-        st.session_state.exhausted_models.add("gemini-3.7-flash")
+        """Test that models in an active cooldown are bypassed immediately."""
+        import time
+        st.session_state.model_cooldowns = {
+            "gemini-3.8-flash": time.time() + 60,
+            "gemini-3.7-flash": time.time() + 60,
+        }
 
         query = "Based on my profile, analyze all scholarships"
         info = get_routed_model_info(query)
@@ -110,9 +120,11 @@ class TestModelRouterFleet(unittest.TestCase):
         self.assertIn(info["model_id"], ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"])
 
     def test_06_all_flash_models_exhausted_smooth_degradation(self):
-        """Test that if all 20 RPD models are exhausted, complex queries degrade smoothly to lite models with full token budget."""
+        """Test that if all 20 RPD models are cooling down, complex queries degrade smoothly to lite models with full token budget."""
+        import time
+        expiry = time.time() + 60
         for m in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash"]:
-            st.session_state.exhausted_models.add(m)
+            st.session_state.model_cooldowns[m] = expiry
 
         query = "Based on my profile, full analysis of PMSSS and Pragati"
         info = get_routed_model_info(query)
@@ -145,6 +157,16 @@ class TestModelRouterFleet(unittest.TestCase):
         ]
         for m in expected:
             self.assertIn(m, GEMINI_FALLBACK_POOL)
+
+    def test_09_rate_limits_expire_instead_of_disabling_a_model_for_the_session(self):
+        model_id = "gemini-3.8-flash"
+        mark_model_cooldown(model_id, "429: retry after 30 seconds", now=1000)
+        self.assertIn(model_id, st.session_state.exhausted_models)
+
+        # A later routing decision automatically clears the expired cooldown.
+        import model_router
+        model_router._clear_expired_cooldowns(now=1031)
+        self.assertNotIn(model_id, st.session_state.exhausted_models)
 
 
 if __name__ == "__main__":

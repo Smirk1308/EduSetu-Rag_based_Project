@@ -41,7 +41,13 @@ CHUNK_OVERLAP = 50
 TOKENIZER_ENCODING = "cl100k_base"
 
 # Smart Model Router import for complexity-based tier selection
-from model_router import get_routed_model_info, render_query_info, GEMINI_FALLBACK_POOL
+from model_router import (
+    get_routed_model_info,
+    render_query_info,
+    GEMINI_FALLBACK_POOL,
+    mark_model_cooldown,
+    record_model_usage,
+)
 
 SYSTEM_PROMPTS = {
     "simple": (
@@ -734,6 +740,7 @@ Instructions:
                             response_stream = chat.send_message_stream(prompt)
                             stream_iter = iter(response_stream)
                             first_chunk = next(stream_iter, None)
+                            record_model_usage(try_model)
 
                             if hasattr(st, "session_state"):
                                 st.session_state.active_model_id = try_model
@@ -750,11 +757,8 @@ Instructions:
                             return
                         except Exception as try_err:
                             err_str = str(try_err)
-                            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "404" in err_str or "NOT_FOUND" in err_str:
-                                if hasattr(st, "session_state"):
-                                    if "exhausted_models" not in st.session_state:
-                                        st.session_state.exhausted_models = set()
-                                    st.session_state.exhausted_models.add(try_model)
+                            if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
+                                mark_model_cooldown(try_model, err_str)
                             logger.warning(f"Gemini streaming attempt on '{try_model}' failed: {try_err}. Checking next candidate in pool...")
                             if gemini_streamed_any:
                                 return
@@ -806,6 +810,7 @@ Instructions:
                             config=gen_config
                         )
                         response = chat.send_message(prompt)
+                        record_model_usage(try_model)
                         content = response.text or ""
                         if hasattr(st, "session_state"):
                             st.session_state.active_model_id = try_model
@@ -825,11 +830,8 @@ Instructions:
                     except Exception as e:
                         last_gemini_err = e
                         err_str = str(e)
-                        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "404" in err_str or "NOT_FOUND" in err_str:
-                            if hasattr(st, "session_state"):
-                                if "exhausted_models" not in st.session_state:
-                                    st.session_state.exhausted_models = set()
-                                st.session_state.exhausted_models.add(try_model)
+                        if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
+                            mark_model_cooldown(try_model, err_str)
                         logger.warning(f"Gemini attempt with model '{try_model}' failed: {e}. Checking next candidate in pool...")
                         continue
 

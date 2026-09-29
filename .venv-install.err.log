@@ -1,0 +1,6 @@
+ERROR: Could not install packages due to an OSError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\shubh\\Downloads\\sih25094\\.venv\\Lib\\site-packages\\tiktoken\\_tiktoken.cp314-win_amd64.pyd'
+Check the permissions.
+
+
+[notice] A new release of pip is available: 26.1.1 -> 26.2.1
+[notice] To update, run: C:\Users\shubh\Downloads\sih25094\.venv\Scripts\python.exe -m pip install --upgrade pip

@@ -205,7 +205,12 @@ def get_groq_api_key() -> str:
 
 
 def get_admin_password() -> str:
-    """Resolve Admin password from secrets or default."""
+    """Resolve the configured admin password, or return an empty string.
+
+    Administrative access must be explicitly configured.  A public fallback
+    credential would turn a configuration mistake into an authentication
+    bypass when the application is deployed.
+    """
     try:
         import streamlit as st
         if hasattr(st, "secrets") and "ADMIN_PASSWORD" in st.secrets:
@@ -217,7 +222,7 @@ def get_admin_password() -> str:
     if raw_pw:
         return raw_pw
 
-    return os.getenv("ADMIN_PASSWORD", "admin123")
+    return os.getenv("ADMIN_PASSWORD", "").strip()
 
 
 def get_api_diagnostics() -> Dict[str, Any]:
