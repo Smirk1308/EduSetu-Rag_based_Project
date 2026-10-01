@@ -2,8 +2,7 @@
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
@@ -21,8 +20,5 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code and verified documents
 COPY . .
 
-# Expose port
-EXPOSE 8000
-
-# Start FastAPI application with uvicorn (binding to dynamic PORT provided by host)
-CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start FastAPI application with uvicorn (binding dynamically to Railway PORT)
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}"]
