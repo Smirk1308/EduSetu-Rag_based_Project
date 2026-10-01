@@ -20,9 +20,10 @@ class PostgresVectorStore:
         max_connections = int(os.getenv("DB_POOL_MAX_SIZE", "8"))
         self.pool = ConnectionPool(
             conninfo=connection_string,
-            min_size=1,
+            min_size=0,
             max_size=max(1, min(max_connections, 32)),
             timeout=10,
+            open=True,
         )
         self._embedding_model = None
 
