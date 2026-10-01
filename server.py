@@ -425,7 +425,13 @@ async def chat_endpoint(req: ChatRequest, request: Request):
                 except Exception as stream_err:
                     logger.error(f"Error during SSE stream: {stream_err}")
                     fallback_offline = _offline_response(query)
-                    yield f"data: {json.dumps({'chunk': '\n\n[Switched to offline guidance]\n' + fallback_offline['answer'], 'model': 'Offline Fallback', 'done': True, 'sources': fallback_offline.get('sources', [])})}\n\n"
+                    offline_payload = {
+                        "chunk": "\n\n[Switched to offline guidance]\n" + fallback_offline["answer"],
+                        "model": "Offline Fallback",
+                        "done": True,
+                        "sources": fallback_offline.get("sources", []),
+                    }
+                    yield f"data: {json.dumps(offline_payload)}\n\n"
             finally:
                 _chat_semaphore.release()
 
