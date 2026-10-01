@@ -1,37 +1,35 @@
 "use client";
 
-import * as React from "react";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 
 export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
+  const { theme, toggleTheme } = useTheme();
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="w-9 h-9 rounded-full bg-emerald-500/10 border border-emerald-500/20" />
-    );
-  }
-
-  const isDark = resolvedTheme === "dark";
+  const isDark = theme === "dark";
 
   return (
     <button
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="relative flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 transition-all duration-200 focus:outline-none"
+      onClick={toggleTheme}
+      suppressHydrationWarning
+      className="icon-button relative overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95 hover:bg-[var(--bg-soft)]"
       aria-label="Toggle theme"
-      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      title={isDark ? "Switch to Day Mode" : "Switch to Night Mode"}
     >
-      {isDark ? (
-        <Sun className="h-4 w-4 text-amber-400 transition-transform rotate-0 scale-100" />
-      ) : (
-        <Moon className="h-4 w-4 text-emerald-700 transition-transform rotate-0 scale-100" />
-      )}
+      <div className="relative h-4 w-4">
+        <Sun
+          aria-hidden="true"
+          className={`absolute inset-0 h-4 w-4 text-[var(--accent)] transition-all duration-300 ${
+            isDark ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
+          }`}
+        />
+        <Moon
+          aria-hidden="true"
+          className={`absolute inset-0 h-4 w-4 text-[var(--brand)] transition-all duration-300 ${
+            isDark ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
+          }`}
+        />
+      </div>
     </button>
   );
 }

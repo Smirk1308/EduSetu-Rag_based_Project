@@ -7,7 +7,7 @@ while tracking per-model usage to avoid hitting rate limits.
 import os
 import re
 import time
-import streamlit as st
+from threading import RLock
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Complete active Gemini 3.x Fleet specifications aligned with user's Google AI Studio free tier limits
@@ -154,6 +154,30 @@ MEDIUM_SIGNALS = [
     "पात्रता", "प्रवेश", "कटऑफ", "तुलना", "दस्तावेज़", "आवेदन कैसे",
 ]
 
+_API_STATE = {}
+_ROUTER_LOCK = RLock()
+
+
+def _runtime_state():
+    """Return process-local best-effort provider circuit-breaker state."""
+    with _ROUTER_LOCK:
+        if "model_cooldowns" not in _API_STATE:
+            if "model_usage" not in _API_STATE:
+                _API_STATE["model_usage"] = {m: 0 for m in MODEL_FLEET}
+                for tier in ["simple", "medium", "complex"]:
+                    _API_STATE["model_usage"][tier] = 0
+            _API_STATE.setdefault("active_model_tier", "simple")
+            _API_STATE.setdefault("active_model_id", "gemini-3.5-flash-lite")
+            _API_STATE.setdefault("exhausted_models", set())
+            _API_STATE.setdefault("model_cooldowns", {})
+    return _API_STATE
+
+
+def reset_router_state() -> None:
+    """Reset process-local routing metrics; primarily used by isolated tests."""
+    with _ROUTER_LOCK:
+        _API_STATE.clear()
+
 
 def is_multilingual_query(text: str) -> bool:
     """Check if query is non-English (e.g. Urdu, Kashmiri, Hindi) or contains non-Latin scripts."""
@@ -195,48 +219,47 @@ def classify_complexity(query: str, history_length: int = 0) -> str:
 
 
 def _init_usage():
-    """Initialize per-model usage tracking in session state."""
-    if hasattr(st, "session_state"):
-        if "model_usage" not in st.session_state:
-            st.session_state.model_usage = {m: 0 for m in MODEL_FLEET}
+    """Initialize process-local model usage tracking."""
+    state = _runtime_state()
+    with _ROUTER_LOCK:
+        if "model_usage" not in state:
+            state["model_usage"] = {m: 0 for m in MODEL_FLEET}
             for tier in ["simple", "medium", "complex"]:
-                st.session_state.model_usage[tier] = 0
-        if "active_model_tier" not in st.session_state:
-            st.session_state.active_model_tier = "simple"
-        if "active_model_id" not in st.session_state:
-            st.session_state.active_model_id = "gemini-3.5-flash-lite"
-        if "exhausted_models" not in st.session_state:
-            st.session_state.exhausted_models = set()
-        if "model_cooldowns" not in st.session_state:
-            st.session_state.model_cooldowns = {}
+                state["model_usage"][tier] = 0
+        state.setdefault("active_model_tier", "simple")
+        state.setdefault("active_model_id", "gemini-3.5-flash-lite")
+        state.setdefault("exhausted_models", set())
+        state.setdefault("model_cooldowns", {})
 
 
 def _clear_expired_cooldowns(now: float | None = None) -> None:
     """Remove models whose provider retry window has elapsed."""
-    if not hasattr(st, "session_state"):
-        return
     now = time.time() if now is None else now
-    cooldowns = st.session_state.get("model_cooldowns", {})
-    active = {model: expiry for model, expiry in cooldowns.items() if expiry > now}
-    st.session_state.model_cooldowns = active
-    # Kept as a compatibility view for existing UI and callers.
-    st.session_state.exhausted_models = set(active)
+    state = _runtime_state()
+    with _ROUTER_LOCK:
+        cooldowns = state.get("model_cooldowns", {})
+        active = {model: expiry for model, expiry in cooldowns.items() if expiry > now}
+        state["model_cooldowns"] = active
+        # Kept as a compatibility view for existing UI and callers.
+        state["exhausted_models"] = set(active)
 
 
 def record_model_usage(model_id: str, tier: str | None = None) -> None:
     """Record a request only after the provider has accepted it."""
-    if not hasattr(st, "session_state") or model_id not in MODEL_FLEET:
+    if model_id not in MODEL_FLEET:
         return
     _init_usage()
-    usage = st.session_state.model_usage
-    usage[model_id] = usage.get(model_id, 0) + 1
-    resolved_tier = tier or MODEL_FLEET[model_id]["tier"]
-    usage[resolved_tier] = usage.get(resolved_tier, 0) + 1
+    state = _runtime_state()
+    with _ROUTER_LOCK:
+        usage = state["model_usage"]
+        usage[model_id] = usage.get(model_id, 0) + 1
+        resolved_tier = tier or MODEL_FLEET[model_id]["tier"]
+        usage[resolved_tier] = usage.get(resolved_tier, 0) + 1
 
 
 def mark_model_cooldown(model_id: str, error_text: str, now: float | None = None) -> None:
     """Temporarily bypass a failed model, respecting provider retry hints."""
-    if not hasattr(st, "session_state") or model_id not in MODEL_FLEET:
+    if model_id not in MODEL_FLEET:
         return
     _init_usage()
     lowered = error_text.lower()
@@ -246,21 +269,24 @@ def mark_model_cooldown(model_id: str, error_text: str, now: float | None = None
     retry_seconds = float(match.group(1)) if match else default_seconds
     retry_seconds = min(max(retry_seconds, 15), 3600)
     current_time = time.time() if now is None else now
-    cooldowns = dict(st.session_state.get("model_cooldowns", {}))
-    cooldowns[model_id] = current_time + retry_seconds
-    st.session_state.model_cooldowns = cooldowns
+    state = _runtime_state()
+    with _ROUTER_LOCK:
+        cooldowns = dict(state.get("model_cooldowns", {}))
+        cooldowns[model_id] = current_time + retry_seconds
+        state["model_cooldowns"] = cooldowns
     _clear_expired_cooldowns(current_time)
 
 
-def get_routed_model_info(query: str = "", history_length: int = 0) -> dict:
+def get_routed_model_info(query: str = "", history_length: int = 0, language: str | None = None) -> dict:
     """Return model tier, ID, max tokens, and metadata dynamically balanced across the active fleet."""
     _init_usage()
     _clear_expired_cooldowns()
     tier = classify_complexity(query, history_length)
 
     candidates = TIER_CANDIDATE_POOLS.get(tier, TIER_CANDIDATE_POOLS["simple"])
-    exhausted = st.session_state.get("exhausted_models", set()) if hasattr(st, "session_state") else set()
-    usage = st.session_state.get("model_usage", {}) if hasattr(st, "session_state") else {}
+    state = _runtime_state()
+    exhausted = state.get("exhausted_models", set())
+    usage = state.get("model_usage", {})
 
     selected_model = None
 
@@ -314,15 +340,14 @@ def get_routed_model_info(query: str = "", history_length: int = 0) -> dict:
 
     # Non-English / Multilingual responses consume 3-4x more tokens per word due to subword byte encoding.
     # We guarantee a generous minimum token allocation of 4,000 tokens so Urdu/Hindi/Kashmiri never truncates.
-    is_multi = is_multilingual_query(query)
-    if hasattr(st, "session_state") and st.session_state.get("selected_language", "English") != "English":
+    is_multi = is_multilingual_query(query) or (language is not None and language != "English")
+    if language is None and state.get("selected_language", "English") != "English":
         is_multi = True
     if is_multi:
         max_tokens = max(max_tokens, 4000)
 
-    if hasattr(st, "session_state"):
-        st.session_state.active_model_tier = tier
-        st.session_state.active_model_id = selected_model
+    state["active_model_tier"] = tier
+    state["active_model_id"] = selected_model
     return {
         "tier": tier,
         "model_id": selected_model,
@@ -368,61 +393,4 @@ def get_llm(query: str = "", history_length: int = 0):
         google_api_key="dummy_key",
         max_output_tokens=model_info["max_tokens"],
         temperature=0.2,
-    )
-
-
-def render_model_badge():
-    """Render the active model indicator and fleet usage monitor in the sidebar."""
-    _init_usage()
-    tier = st.session_state.get("active_model_tier", "simple") if hasattr(st, "session_state") else "simple"
-    model_id = st.session_state.get("active_model_id", "gemini-3.5-flash-lite") if hasattr(st, "session_state") else "gemini-3.5-flash-lite"
-    model_info = MODEL_FLEET.get(model_id, MODEL_FLEET["gemini-3.5-flash-lite"])
-    exhausted = st.session_state.get("exhausted_models", set()) if hasattr(st, "session_state") else set()
-    usage = st.session_state.get("model_usage", {}) if hasattr(st, "session_state") else {}
-
-    st.sidebar.markdown(f"""
-    <div style="background:rgba(255,255,255,0.08);border-radius:8px;
-         padding:10px 12px;margin-top:8px;border:1px solid rgba(255,255,255,0.12);">
-      <div style="color:#F5A623;font-size:9px;font-weight:700;
-           letter-spacing:1px;margin-bottom:6px;">ACTIVE MODEL (FLEET BALANCED)</div>
-      <div style="color:white;font-size:12px;font-weight:700;">
-        {model_info['emoji']} {model_info['label']}
-      </div>
-      <div style="color:#AEC6D0;font-size:9.5px;margin-top:2px;">
-        ID: <code>{model_id}</code>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.sidebar.expander("📊 Fleet Quota Monitor (6 Models)"):
-        st.markdown("<div style='font-size:11px;color:#94A3B8;margin-bottom:6px;'>Dynamically balanced across your AI Studio allocations:</div>", unsafe_allow_html=True)
-        for mid, mcfg in MODEL_FLEET.items():
-            used = usage.get(mid, 0)
-            lim = mcfg["daily_limit"]
-            pct = min(100, int((used / lim) * 100))
-            bar = "█" * (pct // 10) + "░" * (10 - pct // 10)
-            status_tag = ""
-            if mid in exhausted:
-                status_tag = " <span style='color:#EF4444;font-size:9px;font-weight:700;'>[EXHAUSTED]</span>"
-            elif mid == model_id:
-                status_tag = " <span style='color:#10B981;font-size:9px;font-weight:700;'>[ACTIVE]</span>"
-            st.markdown(
-                f"<div style='font-size:11px;margin-bottom:4px;'>"
-                f"{mcfg['emoji']} <b>{mcfg['label']}</b>{status_tag}<br>"
-                f"<code style='font-size:10px;'>{bar} {used}/{lim} RPD ({pct}%)</code>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
-
-
-def render_query_info(query: str, history_length: int = 0):
-    """Show which model was selected and why — shown above the answer."""
-    tier = classify_complexity(query, history_length)
-    actual_tier = st.session_state.get("active_model_tier", tier) if hasattr(st, "session_state") else tier
-    actual_model_id = st.session_state.get("active_model_id", "gemini-3.5-flash-lite") if hasattr(st, "session_state") else "gemini-3.5-flash-lite"
-    actual_cfg = MODEL_FLEET.get(actual_model_id, MODEL_FLEET["gemini-3.5-flash-lite"])
-
-    st.caption(
-        f"{actual_cfg['emoji']} **{actual_cfg['label']}** "
-        f"· `{actual_model_id}` · Complexity: *{actual_tier.capitalize()}*"
     )

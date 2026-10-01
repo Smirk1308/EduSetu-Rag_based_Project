@@ -20,10 +20,10 @@ import tiktoken
 import chromadb
 from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
 from groq import Groq
-import streamlit as st
 import logging
 from google import genai
 from google.genai import types
+from database.postgres_store import PostgresVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,6 @@ TOKENIZER_ENCODING = "cl100k_base"
 # Smart Model Router import for complexity-based tier selection
 from model_router import (
     get_routed_model_info,
-    render_query_info,
     GEMINI_FALLBACK_POOL,
     mark_model_cooldown,
     record_model_usage,
@@ -91,7 +90,7 @@ class LazySentenceTransformerEmbeddingFunction(EmbeddingFunction[Documents]):
 
     def _get_fn(self):
         if self._fn is None:
-            # Ensure no offline flags block download on fresh cloud containers (e.g. Streamlit Cloud)
+            # Ensure no offline flags block model download on a fresh container.
             os.environ.pop("HF_HUB_OFFLINE", None)
             os.environ.pop("TRANSFORMERS_OFFLINE", None)
             os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
@@ -180,15 +179,25 @@ class DocumentChunker:
 
 
 class RAGEngine:
-    """Manages ChromaDB vector store, document indexing, retrieval, and Groq generation."""
+    """Manages PostgreSQL/pgvector (production) or local Chroma (development) RAG."""
 
     def __init__(self, docs_dir: str = DOCS_DIR, chroma_dir: str = CHROMA_DIR):
         self.docs_dir = docs_dir
         self.chroma_dir = chroma_dir
         os.makedirs(self.docs_dir, exist_ok=True)
-        os.makedirs(self.chroma_dir, exist_ok=True)
 
         self.chunker = DocumentChunker(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+
+        database_url = os.getenv("DATABASE_URL", "").strip()
+        is_production = (
+            os.getenv("APP_ENV", "").lower() == "production"
+            or os.getenv("RAILWAY_ENVIRONMENT", "").lower() == "production"
+        )
+        if is_production and not database_url:
+            raise RuntimeError("DATABASE_URL must be configured for production deployments")
+        self.postgres_store = PostgresVectorStore(database_url) if database_url else None
+        if self.postgres_store is None:
+            os.makedirs(self.chroma_dir, exist_ok=True)
         
         # Cached HuggingFace all-MiniLM-L6-v2 embedding function
         self.embedding_fn = get_embedding_function()
@@ -199,10 +208,10 @@ class RAGEngine:
         self._groq_client = None
         self._current_groq_key = None
 
-        # Persistent ChromaDB client and collection
+        # Local Chroma remains available for database-free development only.
         self.chroma_client = None
         self.collection = None
-        self._ensure_collection()
+        # Local Chroma collection is lazy-initialized when accessed.
 
     def get_genai_client(self, api_key: str) -> genai.Client:
         """Cache and return persistent Google GenAI client to prevent premature closure."""
@@ -220,6 +229,10 @@ class RAGEngine:
 
     def _ensure_collection(self):
         """Ensure ChromaDB client and collection handles are healthy and synchronized."""
+        if self.postgres_store is not None:
+            return
+        if self.collection is not None:
+            return
         try:
             if self.chroma_client is None:
                 self.chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
@@ -228,15 +241,8 @@ class RAGEngine:
                 embedding_function=self.embedding_fn,
                 metadata={"hnsw:space": "cosine"}
             )
-            # Lightweight verification call
-            self.collection.count()
-        except Exception:
-            self.chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
-            self.collection = self.chroma_client.get_or_create_collection(
-                name=COLLECTION_NAME,
-                embedding_function=self.embedding_fn,
-                metadata={"hnsw:space": "cosine"}
-            )
+        except Exception as exc:
+            logger.warning("Could not initialize local Chroma collection: %s", exc)
 
     def load_and_parse_documents(self) -> List[Dict[str, Any]]:
         """Extract text page-by-page from all PDFs and TXT files in the docs directory."""
@@ -291,7 +297,17 @@ class RAGEngine:
         return self.load_and_parse_documents()
 
     def index_documents(self, force_reindex: bool = False) -> Dict[str, Any]:
-        """Index or re-index all PDFs and TXT files from docs/ into persistent ChromaDB."""
+        """Index the official PDF/TXT corpus into configured vector storage."""
+        if self.postgres_store is not None:
+            chunks = self.load_and_parse_documents()
+            total_count = self.postgres_store.replace_all(chunks)
+            return {
+                "status": "success" if chunks else "empty",
+                "indexed_chunks": len(chunks),
+                "total_chunks_in_db": total_count,
+                "message": f"Indexed {len(chunks)} chunks into PostgreSQL/pgvector.",
+            }
+
         self._ensure_collection()
 
         if force_reindex:
@@ -388,6 +404,9 @@ class RAGEngine:
         """Fast synchronization between /docs and ChromaDB.
         Uses fingerprint cache to complete in <1ms when files haven't changed.
         """
+        if self.postgres_store is not None:
+            return self.index_documents(force_reindex=force_reindex)
+
         self._ensure_collection()
         manifest_path = self._get_manifest_path()
         current_fp = self._get_docs_fingerprint()
@@ -424,6 +443,18 @@ class RAGEngine:
 
     def get_collection_stats(self) -> Dict[str, Any]:
         """Get statistics about the indexed collection and documents."""
+        if self.postgres_store is not None:
+            pdf_files = [os.path.basename(f) for f in glob.glob(os.path.join(self.docs_dir, "*.pdf"))]
+            txt_files = [os.path.basename(f) for f in glob.glob(os.path.join(self.docs_dir, "*.txt"))]
+            return {
+                "total_chunks": self.postgres_store.count(),
+                "pdf_files": pdf_files,
+                "txt_files": txt_files,
+                "all_files": self.postgres_store.sources(),
+                "docs_dir": self.docs_dir,
+                "storage": "postgresql-pgvector",
+            }
+
         self._ensure_collection()
         count = self.collection.count()
         pdf_files = [os.path.basename(f) for f in glob.glob(os.path.join(self.docs_dir, "*.pdf"))]
@@ -438,8 +469,11 @@ class RAGEngine:
         }
 
     def retrieve(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Retrieve top-k relevant chunks from ChromaDB for a given query, with safe 2G fallback."""
+        """Retrieve relevant chunks from configured vector storage with offline fallback."""
         try:
+            if self.postgres_store is not None:
+                return self.postgres_store.retrieve(query, top_k)
+
             self._ensure_collection()
             if self.collection.count() == 0:
                 return []
@@ -595,13 +629,12 @@ Instructions:
         model: str = DEFAULT_GROQ_MODEL,
         top_k: int = 5,
         history: Optional[List[Dict[str, str]]] = None,
+        language: Optional[str] = None,
         stream: bool = False
     ) -> Any:
         """Retrieve context and generate answer via Gemini 3.5 Flash (primary) with Groq (fallback)."""
         # Resolve conversation history
         effective_history = history
-        if effective_history is None and hasattr(st, "session_state"):
-            effective_history = st.session_state.get("messages", [])
         if effective_history is None:
             effective_history = []
 
@@ -661,14 +694,9 @@ Instructions:
 
         # Determine history length and route LLM using model_router
         history_length = len(effective_history)
-        routed_cfg = get_routed_model_info(query, history_length)
+        routed_cfg = get_routed_model_info(query, history_length, language=language)
         active_model_id = routed_cfg["model_id"]
         max_tokens_to_use = routed_cfg.get("max_tokens", 3072)
-
-        try:
-            render_query_info(query, history_length)
-        except Exception:
-            pass
 
         # Resolve Gemini and Groq API Keys via centralized resilient helper
         import api_key_helper
@@ -680,8 +708,10 @@ Instructions:
         if not resolved_groq_key:
             resolved_groq_key = api_key_helper.get_groq_api_key()
 
-        active_tier = st.session_state.get("active_model_tier", "simple") if hasattr(st, "session_state") else "simple"
+        active_tier = routed_cfg.get("tier", "simple")
         system_content = SYSTEM_PROMPTS.get(active_tier, SYSTEM_PROMPTS["simple"])
+        if language and language != "English":
+            system_content += f" Respond in {language}, using clear and natural language."
 
         # Prepare messages for Groq fallback
         groq_messages = [{"role": "system", "content": system_content}]
@@ -741,10 +771,6 @@ Instructions:
                             stream_iter = iter(response_stream)
                             first_chunk = next(stream_iter, None)
                             record_model_usage(try_model)
-
-                            if hasattr(st, "session_state"):
-                                st.session_state.active_model_id = try_model
-                                st.session_state.selected_model = try_model
 
                             if first_chunk and first_chunk.text:
                                 gemini_streamed_any = True
@@ -812,9 +838,6 @@ Instructions:
                         response = chat.send_message(prompt)
                         record_model_usage(try_model)
                         content = response.text or ""
-                        if hasattr(st, "session_state"):
-                            st.session_state.active_model_id = try_model
-                            st.session_state.selected_model = try_model
                         _RESPONSE_CACHE[cache_key] = {
                             "answer": content,
                             "sources": context_chunks,
@@ -876,6 +899,6 @@ Instructions:
                     "model_used": f"{groq_model} (Groq Fallback)"
                 }
 
-        raise ValueError("Neither GOOGLE_API_KEY nor GROQ_API_KEY is configured in Streamlit Secrets or environment.")
+        raise ValueError("Neither GOOGLE_API_KEY nor GROQ_API_KEY is configured in the backend environment.")
 
 

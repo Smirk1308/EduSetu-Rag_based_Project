@@ -1,5 +1,5 @@
 # J&K EduSetu — Autonomous AI Higher Education & Scholarship Advisor
-### Official AI Advisor for Jammu, Kashmir & Ladakh • Next.js 15 + FastAPI + ChromaDB Hybrid RAG
+### Official AI Advisor for Jammu, Kashmir & Ladakh • Next.js + FastAPI + PostgreSQL/pgvector
 
 <p align="center">
   <img src="frontend/public/jk_emblem.png" width="100" alt="J&K State Emblem" />
@@ -7,7 +7,7 @@
 
 An enterprise-grade, decoupled AI advisor grounded directly on verified government gazettes, AICTE PMSSS guidelines, JKBOPEE seat matrices, and the updated **S.O. 176 (2024)** reservation rules. 
 
-Built with **Next.js 15 (React 19)**, **Tailwind CSS**, **Framer Motion**, and **Aceternity UI** on the frontend, paired with an asynchronous **FastAPI** backend featuring a self-healing **5-model Gemini fleet** and sub-10ms **2G mountain edge failover**.
+Built with **Next.js (React 19)**, **Tailwind CSS**, and **Framer Motion**, paired with a **FastAPI** backend and a managed **PostgreSQL/pgvector** knowledge store. Local ChromaDB remains available only for database-free development.
 
 ---
 
@@ -15,7 +15,7 @@ Built with **Next.js 15 (React 19)**, **Tailwind CSS**, **Framer Motion**, and *
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Next.js 15 Frontend                    │
+│                       Next.js Frontend                       │
 │   (Vercel Deploy • React 19 • Aceternity UI • Tailwind CSS) │
 │  Spotlight · Background Beams · Floating Nav · Bento Grid   │
 └──────────────────────────────┬──────────────────────────────┘
@@ -33,7 +33,8 @@ Built with **Next.js 15 (React 19)**, **Tailwind CSS**, **Framer Motion**, and *
               ▼                                 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      Storage & Retrieval                    │
-│    Local ChromaDB (384-d all-MiniLM) / Supabase pgvector    │
+│         Supabase PostgreSQL + pgvector (production)           │
+│             ChromaDB (local development only)                 │
 │              Verified Official Gazette Documents            │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -42,7 +43,7 @@ Built with **Next.js 15 (React 19)**, **Tailwind CSS**, **Framer Motion**, and *
 
 ## ✨ Features
 
-- **Decoupled Architecture**: Independent Next.js 15 frontend and FastAPI async REST API.
+- **Decoupled Architecture**: Independent Next.js frontend and FastAPI async REST API.
 - **Aceternity UI & 21st.dev Components**:
   - **Spotlight**: Radial cursor hero spotlight gradient.
   - **Background Beams / Sparkles**: Ambient floating particles inspired by Himalayan tranquility.
@@ -67,9 +68,9 @@ Built with **Next.js 15 (React 19)**, **Tailwind CSS**, **Framer Motion**, and *
 ## 🚀 Quick Start (Local Development)
 
 ### 1. Prerequisites
-- Python 3.10+ (tested on Python 3.11 & 3.14)
+- Python 3.11+
 - Node.js 18+ (tested on Node v24)
-- Google AI Studio API key (configured in `.env` or `.streamlit/secrets.toml`)
+- Google AI Studio API key (configured in `.env` or backend deployment environment variables)
 
 ### 2. Start the FastAPI Backend
 ```bash
@@ -81,6 +82,8 @@ python server.py
 ```
 Backend runs at: `http://localhost:8000`  
 Interactive Swagger API documentation: `http://localhost:8000/docs`
+
+Without `DATABASE_URL`, local development uses ChromaDB. Production startup fails fast unless a server-only PostgreSQL connection string is configured; the browser never receives database credentials.
 
 ### 3. Start the Next.js Frontend
 ```bash
@@ -102,10 +105,11 @@ Frontend runs at: `http://localhost:3000`
 1. Push your repository to GitHub.
 2. In Vercel, click **Add New Project** and select this repository.
 3. Set **Root Directory** to `frontend`.
-4. Add Environment Variable:
+4. Add the backend base URL as a server-only Environment Variable:
    ```
-   NEXT_PUBLIC_API_URL = https://your-backend-railway-url.up.railway.app
+   BACKEND_API_URL = https://your-backend-railway-url.up.railway.app
    ```
+   The Next.js `/api/chat` route streams requests to FastAPI, so the browser does not need a public API URL or cross-origin access.
 5. Click **Deploy**.
 
 ### Deploy Backend to Railway
@@ -115,13 +119,23 @@ Frontend runs at: `http://localhost:3000`
    ```
    GOOGLE_API_KEY = your_google_ai_studio_api_key
    GROQ_API_KEY = your_groq_api_key (optional fallback)
+   DATABASE_URL = your_supabase_postgres_connection_string
+   DB_POOL_MAX_SIZE = 8
+   APP_ENV = production
    ```
-4. Click **Deploy**. Copy the generated public URL and paste it into your Vercel frontend `NEXT_PUBLIC_API_URL`.
+4. Click **Deploy**. Copy the generated public URL and set it as `BACKEND_API_URL` in Vercel. If you also allow direct browser access to FastAPI, set `FRONTEND_ORIGINS` to a comma-separated list of exact frontend origins.
 
 ---
 
-## 🗄️ Database Architecture (Roadmap)
-The production schema for **Supabase (PostgreSQL with `pgvector`)** is located in [`database/schema.sql`](database/schema.sql) with HNSW indexes for dense vector similarity and GIN indexes for full-text BM25 search.
+## Database setup
+
+1. Create a Supabase PostgreSQL project in the region closest to your backend deployment.
+2. Review and apply [`database/schema.sql`](database/schema.sql) to that project. It enables pgvector and secures the tables from browser-role access; only the trusted backend should connect.
+3. Set `DATABASE_URL` in the backend's private environment variables. Use the Supabase Session Pooler or direct connection appropriate for your host, and never add this value to a `NEXT_PUBLIC_` variable.
+4. Deploy the backend with the verified source PDFs/TXT files in `docs/`, then run `python index_documents.py` once to create the vector index. Repeat after updating the official corpus.
+5. Check `/api/ready` before routing traffic. `/api/health` is a liveness check and intentionally does not prove database availability.
+
+The Supabase project `edusetu-prod` has been provisioned in Mumbai and the schema applied. The FastAPI deployment still needs its private `DATABASE_URL`, after which run the index command to populate the corpus. Re-indexing replaces the document corpus atomically; keep a database backup and review the source bundle first. Chat history is intentionally not persisted until user authentication and consent are in place.
 
 ---
 

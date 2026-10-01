@@ -298,7 +298,7 @@ def get_cohort_analytics(students: List[Dict]) -> Dict:
 
 def simulate_demo_cohort(n: int = 50) -> List[Dict]:
     """
-    Generates realistic demo student data for hackathon demonstration.
+    Generates realistic demo student data for evaluation and testing.
     Ensure realistic distributions.
     """
     random.seed(42)

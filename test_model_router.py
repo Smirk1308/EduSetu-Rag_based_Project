@@ -10,7 +10,7 @@ Tests:
 """
 
 import unittest
-import streamlit as st
+import model_router
 from model_router import (
     MODEL_FLEET,
     MODELS,
@@ -21,22 +21,14 @@ from model_router import (
     get_routed_model_info,
     mark_model_cooldown,
     record_model_usage,
+    reset_router_state,
 )
 
 
 class TestModelRouterFleet(unittest.TestCase):
 
     def setUp(self):
-        # Reset streamlit session state for clean test runs
-        if hasattr(st, "session_state"):
-            st.session_state.model_usage = {m: 0 for m in MODEL_FLEET}
-            for t in ["simple", "medium", "complex"]:
-                st.session_state.model_usage[t] = 0
-            st.session_state.active_model_tier = "simple"
-            st.session_state.active_model_id = "gemini-3.5-flash-lite"
-            st.session_state.exhausted_models = set()
-            st.session_state.model_cooldowns = {}
-            st.session_state.selected_language = "English"
+        reset_router_state()
 
     def test_01_fleet_catalog_specifications(self):
         """Verify all 6 active Gemini 3.x models are defined with correct quotas."""
@@ -90,7 +82,7 @@ class TestModelRouterFleet(unittest.TestCase):
         self.assertIn(info1["model_id"], ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"])
 
         # Routing itself must not consume quota; record usage only after a provider accepts a request.
-        self.assertEqual(st.session_state.model_usage[info1["model_id"]], 0)
+        self.assertEqual(model_router._runtime_state()["model_usage"][info1["model_id"]], 0)
         record_model_usage(info1["model_id"], info1["tier"])
 
         # Next query should choose the other model because the first one has higher usage.
@@ -109,7 +101,7 @@ class TestModelRouterFleet(unittest.TestCase):
     def test_05_exhausted_model_auto_bypass(self):
         """Test that models in an active cooldown are bypassed immediately."""
         import time
-        st.session_state.model_cooldowns = {
+        model_router._runtime_state()["model_cooldowns"] = {
             "gemini-3.8-flash": time.time() + 60,
             "gemini-3.7-flash": time.time() + 60,
         }
@@ -124,7 +116,7 @@ class TestModelRouterFleet(unittest.TestCase):
         import time
         expiry = time.time() + 60
         for m in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash"]:
-            st.session_state.model_cooldowns[m] = expiry
+            model_router._runtime_state()["model_cooldowns"][m] = expiry
 
         query = "Based on my profile, full analysis of PMSSS and Pragati"
         info = get_routed_model_info(query)
@@ -144,6 +136,10 @@ class TestModelRouterFleet(unittest.TestCase):
         info_hi = get_routed_model_info(hindi_query)
         self.assertGreaterEqual(info_hi["max_tokens"], 4000)
 
+        # The API must honor the selected language even when the query is English.
+        selected_hindi = get_routed_model_info("Where can I apply?", language="Hindi")
+        self.assertGreaterEqual(selected_hindi["max_tokens"], 4000)
+
     def test_08_fallback_pool_completeness(self):
         """Verify all 6 active models exist in GEMINI_FALLBACK_POOL."""
         self.assertEqual(len(GEMINI_FALLBACK_POOL), 6)
@@ -161,12 +157,11 @@ class TestModelRouterFleet(unittest.TestCase):
     def test_09_rate_limits_expire_instead_of_disabling_a_model_for_the_session(self):
         model_id = "gemini-3.8-flash"
         mark_model_cooldown(model_id, "429: retry after 30 seconds", now=1000)
-        self.assertIn(model_id, st.session_state.exhausted_models)
+        self.assertIn(model_id, model_router._runtime_state()["exhausted_models"])
 
         # A later routing decision automatically clears the expired cooldown.
-        import model_router
         model_router._clear_expired_cooldowns(now=1031)
-        self.assertNotIn(model_id, st.session_state.exhausted_models)
+        self.assertNotIn(model_id, model_router._runtime_state()["exhausted_models"])
 
 
 if __name__ == "__main__":

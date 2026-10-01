@@ -157,7 +157,7 @@ def generate_ds_ai_guide():
     story.append(Paragraph(
         "Generic projects like Titanic survival prediction or MNIST digit classification no longer impress recruiters. "
         "Build high-impact, full-lifecycle portfolio projects: "
-        "Project 1: Production RAG Application - Ingest proprietary domain documents, utilize chunking strategies, embeddings, hybrid search, and LLM synthesis with citations. Deploy on Streamlit/FastAPI. "
+        "Project 1: Production RAG Application - Ingest proprietary domain documents, utilize chunking strategies, embeddings, hybrid search, and LLM synthesis with citations. Deploy as a web application with a FastAPI service. "
         "Project 2: End-to-End Predictive Pipeline - Real-world dataset, automated data validation, CI/CD retraining with MLflow, and cloud deployment with Docker. "
         "Project 3: Computer Vision or Multimodal Agent - Fine-tuned vision transformer or audio agent with clear evaluation metrics and latency benchmarks.",
         body_style

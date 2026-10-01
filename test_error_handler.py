@@ -33,12 +33,12 @@ class TestErrorHandler(unittest.TestCase):
         self.assertIn("Timeout", diag["title"])
         self.assertTrue(diag["fallback_available"])
 
-    def test_04_chroma_sync_classification(self):
-        """Test Chroma vector store notice."""
-        err = Exception("chromadb.errors.ChromaError: Collection sqlite lock busy")
+    def test_04_database_sync_classification(self):
+        """Test vector database connectivity notice."""
+        err = Exception("Postgres pgvector index is unavailable")
         diag = ErrorDiagnostic.classify(err)
         self.assertEqual(diag["category"], "database")
-        self.assertIn("Vector Store", diag["title"])
+        self.assertIn("Database", diag["title"])
 
     def test_05_unknown_exception_fallback(self):
         """Test general exception provides safe fallback without crashing."""

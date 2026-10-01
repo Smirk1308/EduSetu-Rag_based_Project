@@ -1,140 +1,200 @@
 "use client";
 
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Menu, X, ExternalLink } from "lucide-react";
+import {
+  ArrowRight,
+  FileText,
+  GraduationCap,
+  Home,
+  Landmark,
+  Menu,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { cn } from "@/lib/utils";
 
-interface FloatingNavbarProps {
-  isOffline: boolean;
-  onToggleOffline: () => void;
-  activeModelName?: string;
-}
+const navItems = [
+  { name: "Home", href: "/", icon: Home },
+  { name: "Scholarships", href: "/scholarships", icon: GraduationCap },
+  { name: "Colleges & Seats", href: "/colleges", icon: Landmark },
+  { name: "Admission planner", href: "/admissions", icon: FileText },
+  { name: "Ask advisor", href: "/#advisor", icon: Sparkles },
+];
 
-export const FloatingNavbar = ({
-  isOffline,
-  onToggleOffline,
-  activeModelName = "Gemini 3.8 Flash",
-}: FloatingNavbarProps) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export const FloatingNavbar = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const navItems = [
-    { name: "AI Advisor", href: "#advisor" },
-    { name: "Colleges & Seats", href: "#colleges" },
-    { name: "Scholarships", href: "#scholarships" },
-    { name: "S.O. 176 Quota", href: "#reservation" },
-  ];
+  // Close sidebar on ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Prevent background scrolling when sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
 
   return (
-    <header className="fixed top-4 inset-x-0 z-50 flex justify-center px-4">
-      <motion.nav
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-6xl glass-panel rounded-full px-4 py-2.5 flex items-center justify-between shadow-lg shadow-black/5 dark:shadow-emerald-950/20 border border-emerald-500/20"
-      >
-        {/* Brand & Emblem */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative w-8 h-8 rounded-full overflow-hidden border border-emerald-500/40 bg-white/10 p-0.5 shadow-sm">
+    <>
+      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--bg-body)]/85 backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+          >
             <Image
               src="/jk_emblem.png"
-              alt="J&K Government Emblem"
-              fill
-              className="object-contain p-0.5"
+              alt="Jammu and Kashmir Government emblem"
+              width={38}
+              height={48}
+              priority
+              className="h-11 w-[35px] shrink-0 object-contain drop-shadow-sm"
             />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-display font-bold text-sm sm:text-base tracking-tight text-emerald-950 dark:text-emerald-100 flex items-center">
-              J&K EduSetu
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 ml-1 inline-block animate-pulse" />
+            <span className="min-w-0">
+              <span className="flex items-center gap-2">
+                <span className="font-display block whitespace-nowrap text-lg font-bold leading-tight tracking-tight sm:text-xl">
+                  J&amp;K EduSetu
+                </span>
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-[var(--brand)]/25 bg-[var(--brand)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--brand)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  UT Portal
+                </span>
+              </span>
+              <span className="hidden text-xs text-[var(--text-secondary)] sm:block">
+                Higher Education Advisory · NEP 2020
+              </span>
             </span>
-            <span className="text-[9px] uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 hidden sm:inline-block">
-              Government of Jammu & Kashmir
-            </span>
-          </div>
-        </Link>
+          </Link>
 
-        {/* Desktop Nav Links */}
-        <div className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            >
-              {item.name}
-            </Link>
-          ))}
-        </div>
-
-        {/* Controls: Active Model Pill, 2G Mode, Theme */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Active Fleet Indicator */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
-            <span>{isOffline ? "2G Offline Edge" : activeModelName}</span>
-          </div>
-
-          {/* ⚡ 2G Ultra-Lite Toggle Switch */}
-          <button
-            onClick={onToggleOffline}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border",
-              isOffline
-                ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/25"
-                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
-            )}
-            title="Toggle 2G Mountain Edge Mode (Sub-10ms Verified Local Gazette)"
-          >
-            <Zap className={cn("w-3.5 h-3.5", isOffline ? "fill-white" : "text-amber-500")} />
-            <span className="hidden sm:inline">2G Edge</span>
-          </button>
-
-          {/* Theme Switcher */}
-          <ThemeToggle />
-
-          {/* Mobile Menu Trigger */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-1.5 rounded-full text-slate-700 dark:text-slate-300 hover:bg-emerald-500/10"
-            aria-label="Toggle Navigation Menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </motion.nav>
-
-      {/* Mobile Drawer */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-16 inset-x-4 md:hidden glass-panel rounded-2xl p-4 shadow-xl border border-emerald-500/20 flex flex-col gap-3"
-          >
+          {/* Desktop Navigation Links */}
+          <nav aria-label="Main navigation" className="hidden items-center gap-5 lg:flex">
             {navItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-lg text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-emerald-500/10"
-              >
+              <Link key={item.name} href={item.href} className="nav-link">
                 {item.name}
               </Link>
             ))}
-            <div className="pt-2 border-t border-emerald-500/20 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-              <span>Active Engine</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                {isOffline ? "2G Offline Edge" : activeModelName}
+          </nav>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
+            <Link href="/#advisor" className="button-primary nav-cta">
+              <span className="hidden sm:inline">Ask advisor</span>
+              <span className="sm:hidden">Ask</span>
+              <ArrowRight aria-hidden="true" className="hidden h-4 w-4 sm:block" />
+            </Link>
+
+            {/* 3-Lines Sidebar Hamburger Button */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="icon-button lg:hidden"
+              aria-label="Open navigation sidebar"
+              aria-expanded={sidebarOpen}
+              aria-controls="navigation-sidebar"
+            >
+              <Menu aria-hidden="true" className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Dimmed Backdrop Overlay */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Slide-in Navigation Sidebar Drawer */}
+      <aside
+        id="navigation-sidebar"
+        aria-label="Mobile navigation sidebar"
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-xs flex-col border-l border-[var(--line)] bg-[var(--bg-surface)] p-6 shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-sm ${
+          sidebarOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
+        }`}
+      >
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/jk_emblem.png"
+              alt="Jammu and Kashmir Government emblem"
+              width={32}
+              height={40}
+              className="h-10 w-[30px] object-contain drop-shadow-sm"
+            />
+            <div>
+              <span className="font-display block text-base font-bold text-[var(--text-primary)]">
+                J&amp;K EduSetu
+              </span>
+              <span className="block text-xs text-[var(--text-secondary)]">
+                Guidance &amp; Policy Portal
               </span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </header>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="icon-button"
+            aria-label="Close navigation sidebar"
+          >
+            <X aria-hidden="true" className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Sidebar Links */}
+        <nav className="mt-6 flex flex-1 flex-col gap-2 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center justify-between rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-[var(--text-primary)] transition-all hover:border-[var(--line)] hover:bg-[var(--bg-soft)] hover:text-[var(--brand)]"
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className="h-4 w-4 text-[var(--brand)]" />
+                  <span>{item.name}</span>
+                </div>
+                <ArrowRight aria-hidden="true" className="h-4 w-4 opacity-40" />
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer Controls */}
+        <div className="border-t border-[var(--line)] pt-5 flex flex-col gap-4">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-semibold text-[var(--text-secondary)]">Day / Night theme</span>
+            <ThemeToggle />
+          </div>
+          <Link
+            href="/#advisor"
+            onClick={() => setSidebarOpen(false)}
+            className="button-primary w-full text-center"
+          >
+            Ask EduSetu Advisor <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 };

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -8,16 +8,10 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-});
-
 export const metadata: Metadata = {
-  title: "J&K EduSetu | AI Career, Scholarship & College Advisor",
+  title: "J&K EduSetu | Education Guidance for J&K",
   description:
-    "Official Autonomous AI Higher Education Advisor for Jammu, Kashmir & Ladakh. AICTE PMSSS, BOPEE Seat Matrices, and S.O. 176 (2024) Reservation Policies.",
+    "Explore scholarship guidance, admission information, colleges, and seat details for students in Jammu & Kashmir. An independent education guidance project by Shubh Sharma.",
   icons: {
     icon: "/jk_emblem.png",
   },
@@ -29,11 +23,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${plusJakartaSans.variable}`}>
-      <body className="min-h-screen flex flex-col antialiased selection:bg-emerald-500/20 selection:text-emerald-700 dark:selection:text-emerald-300">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
-        </ThemeProvider>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');document.documentElement.style.colorScheme='dark';}else{document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');document.documentElement.style.colorScheme='light';}}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body
+        suppressHydrationWarning
+        className="min-h-screen flex flex-col antialiased selection:bg-[var(--brand)]/15 selection:text-[var(--brand-strong)]"
+      >
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

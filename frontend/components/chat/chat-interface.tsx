@@ -1,109 +1,98 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Sparkles, FileText, Globe, RefreshCw, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useEffect, useId, useRef, useState } from "react";
+import { Bot, FileText, RefreshCw, Send, User, Zap } from "lucide-react";
+
+interface SourceCitation {
+  source: string;
+  page?: number;
+  similarity?: number;
+}
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  model?: string;
-  sources?: Array<{ source: string; page?: number; similarity?: number }>;
+  sources?: SourceCitation[];
   isStreaming?: boolean;
 }
 
 interface ChatInterfaceProps {
   isOffline: boolean;
   onToggleOffline: () => void;
-  onModelActive?: (model: string) => void;
 }
 
 const QUICK_PROMPTS = [
-  { label: "79% PCM Scholarships", prompt: "I got 79% in Class 12 (PCM) with family income under ₹3 Lakh. What scholarships and PMSSS benefits am I eligible for?" },
-  { label: "NIT Srinagar Cutoffs", prompt: "What are the JEE Main opening and closing ranks for Home State candidates at NIT Srinagar?" },
-  { label: "S.O. 176 Reservation Quotas", prompt: "Explain the updated Jammu & Kashmir reservation policy under S.O. 176 (2024) for OM, RBA, and ST categories." },
-  { label: "AICTE PMSSS Step-by-Step", prompt: "Give me the step-by-step application procedure, mandatory documents, and stipend disbursement for AICTE PMSSS." },
+  { label: "Find scholarship options", prompt: "What scholarships may be available to students from Jammu & Kashmir, and how can I check eligibility?" },
+  { label: "Explore NIT Srinagar cutoffs", prompt: "What JEE Main opening and closing ranks are listed for Home State candidates at NIT Srinagar? Please include sources." },
+  { label: "Understand seat categories", prompt: "Explain Jammu & Kashmir seat reservation categories in simple language and include sources." },
+  { label: "PMSSS application steps", prompt: "What are the steps and required documents for an AICTE PMSSS application? Please include sources." },
 ];
 
-const LANGUAGES = [
-  { code: "English", label: "English", flag: "🇬🇧", dir: "ltr" },
-  { code: "Urdu", label: "اردو", flag: "🇵🇰", dir: "rtl" },
-  { code: "Hindi", label: "हिंदी", flag: "🇮🇳", dir: "ltr" },
-  { code: "Kashmiri", label: "کٲشُر", flag: "🏔️", dir: "rtl" },
-];
+const cleanPlainText = (content: string) =>
+  content
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, "$1");
 
-export const ChatInterface = ({
-  isOffline,
-  onToggleOffline,
-  onModelActive,
-}: ChatInterfaceProps) => {
+export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps) => {
+  const idPrefix = useId();
+  const messageSequence = useRef(0);
+  const streamBuffer = useRef("");
+  const responseText = useRef("");
+  const responseSources = useRef<SourceCitation[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "initial-welcome",
       role: "assistant",
       content:
-        "**Salaam & Welcome to J&K EduSetu.**\n\nI am your verified AI Advisor for Higher Education, AICTE PMSSS Scholarships, BOPEE Seat Matrices, and the updated S.O. 176 reservation rules across Jammu, Kashmir & Ladakh.\n\nAsk me about your percentage, preferred branches, cutoff ranks, or government financial aid.",
-      model: "J&K EduSetu Core AI",
+        "Salaam, and welcome to J&K EduSetu.\n\nAsk about scholarships, admission steps, colleges, or seat categories. Share your study stage or exam if it helps us give more relevant guidance.",
     },
   ]);
-
   const [input, setInput] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
   }, [messages]);
 
   const handleSend = async (queryText?: string) => {
-    const textToSend = (queryText || input).trim();
+    const textToSend = (queryText ?? input).trim();
     if (!textToSend || isLoading) return;
 
     setInput("");
-
+    messageSequence.current += 1;
+    const requestId = `${idPrefix}-${messageSequence.current}`;
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `${requestId}-user`,
       role: "user",
       content: textToSend,
     };
-
-    const assistantPlaceholderId = (Date.now() + 1).toString();
-    const assistantPlaceholder: Message = {
-      id: assistantPlaceholderId,
-      role: "assistant",
-      content: "",
-      model: isOffline ? "⚡ 2G Mountain Edge" : "Connecting to Gemini Fleet...",
-      isStreaming: true,
-      sources: [],
-    };
-
-    setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
+    const assistantPlaceholderId = `${requestId}-assistant`;
+    streamBuffer.current = "";
+    responseText.current = "";
+    responseSources.current = [];
+    setMessages((previous) => [
+      ...previous,
+      userMessage,
+      { id: assistantPlaceholderId, role: "assistant", content: "", isStreaming: true, sources: [] },
+    ]);
     setIsLoading(true);
 
     try {
-      // Connect to FastAPI backend endpoint (defaults to http://localhost:8000)
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-      const historyPayload = messages
-        .filter((m) => m.role === "user" || m.role === "assistant")
+      const history = messages
+        .filter((message) => message.role === "user" || message.role === "assistant")
         .slice(-6)
-        .map((m) => ({ role: m.role, content: m.content }));
+        .map(({ role, content }) => ({ role, content }));
 
-      const response = await fetch(`${backendUrl}/api/chat`, {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: textToSend,
-          history: historyPayload,
-          language: selectedLanguage,
+          history,
+          language: "English",
           offline_mode: isOffline,
         }),
       });
@@ -114,240 +103,145 @@ export const ChatInterface = ({
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
-      let accumulatedText = "";
-      let activeModel = isOffline ? "⚡ 2G Mountain Edge" : "Gemini 3.8 Flash";
-      let receivedSources: Array<any> = [];
+      let finished = false;
 
-      while (true) {
+      while (!finished) {
         const { value, done } = await reader.read();
-        if (done) break;
-
-        const rawChunk = decoder.decode(value, { stream: true });
-        const lines = rawChunk.split("\n");
+        finished = done;
+        streamBuffer.current += decoder.decode(value, { stream: !done });
+        const lines = streamBuffer.current.split("\n");
+        streamBuffer.current = done ? "" : lines.pop() ?? "";
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.replace("data: ", "").trim());
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6).trim());
+            if (typeof data.chunk === "string") responseText.current += data.chunk;
+            if (Array.isArray(data.sources)) responseSources.current = data.sources;
 
-              if (data.chunk) {
-                accumulatedText += data.chunk;
-              }
-              if (data.model) {
-                activeModel = data.model;
-                if (onModelActive) onModelActive(activeModel);
-              }
-              if (data.sources) {
-                receivedSources = data.sources;
-              }
-
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantPlaceholderId
-                    ? {
-                        ...msg,
-                        content: accumulatedText,
-                        model: activeModel,
-                        sources: receivedSources,
-                        isStreaming: !data.done,
-                      }
-                    : msg
-                )
-              );
-            } catch (e) {
-              // Ignore partial JSON parse splits
-            }
+            setMessages((previous) => previous.map((message) =>
+              message.id === assistantPlaceholderId
+                ? { ...message, content: responseText.current, sources: responseSources.current, isStreaming: !data.done }
+                : message
+            ));
+          } catch {
+            // Ignore incomplete or non-JSON server-sent events.
           }
         }
       }
-    } catch (err: any) {
-      console.error("Chat streaming error:", err);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantPlaceholderId
-            ? {
-                ...msg,
-                content:
-                  "⚠️ **Could not connect to the backend server.**\n\nPlease ensure `python server.py` is running on port 8000, or toggle **⚡ 2G Edge Mode** for immediate offline gazette answers.",
-                isStreaming: false,
-                model: "Offline Fallback",
-              }
-            : msg
-        )
-      );
+
+      setMessages((previous) => previous.map((message) =>
+        message.id === assistantPlaceholderId
+          ? { ...message, content: responseText.current, sources: responseSources.current, isStreaming: false }
+          : message
+      ));
+    } catch (error) {
+      console.error("Chat request failed:", error);
+      setMessages((previous) => previous.map((message) =>
+        message.id === assistantPlaceholderId
+          ? {
+              ...message,
+              content: "We couldn't connect just now. Please try again, or switch on Low-data mode for locally available guidance.",
+              isStreaming: false,
+            }
+          : message
+      ));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto rounded-3xl glass-panel border border-emerald-500/25 shadow-2xl overflow-hidden flex flex-col h-[750px]">
-      {/* Chat Window Top Bar */}
-      <div className="px-6 py-4 border-b border-emerald-500/20 bg-emerald-950/10 dark:bg-emerald-950/40 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative w-8 h-8 rounded-full bg-emerald-500/20 p-1 flex items-center justify-center border border-emerald-500/40">
-            <Image src="/jk_emblem.png" alt="Advisor Avatar" width={24} height={24} className="object-contain" />
+    <div className="chat-panel mx-auto flex h-[min(650px,78vh)] min-h-[540px] w-full max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-[var(--line)] bg-[var(--bg-surface)] shadow-[var(--shadow-elevated)]">
+      <div className="flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--bg-surface)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="eyebrow">Official Gazette Grounded AI Advisor</p>
           </div>
-          <div>
-            <h3 className="font-display font-bold text-sm text-slate-900 dark:text-emerald-100 flex items-center gap-2">
-              J&K EduSetu AI Assistant
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 font-semibold text-emerald-700 dark:text-emerald-300">
-                Official Gazette Verified
-              </span>
-            </h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              ChromaDB Hybrid RAG • S.O. 176 (2024) Rules • 5-Model Gemini Fleet
-            </p>
-          </div>
+          <h3 className="font-display mt-1 text-xl font-bold sm:text-2xl">Ask an education or policy question</h3>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">Answers are validated against active J&amp;K UT circulars with citations.</p>
         </div>
-
-        {/* Language Selector */}
-        <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4 text-emerald-600 dark:text-emerald-400 hidden sm:inline" />
-          <select
-            value={selectedLanguage}
-            onChange={(e) => setSelectedLanguage(e.target.value)}
-            className="text-xs bg-white/70 dark:bg-emerald-950/60 border border-emerald-500/30 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onToggleOffline}
+            aria-pressed={isOffline}
+            className={`mode-toggle ${isOffline ? "mode-toggle-active" : ""}`}
+            title="Use locally available guidance when connectivity is limited"
           >
-            {LANGUAGES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.flag} {l.label}
-              </option>
-            ))}
-          </select>
+            <Zap aria-hidden="true" className="h-4 w-4" />
+            <span>Low-data mode</span>
+            <span className="mode-state">{isOffline ? "On" : "Off"}</span>
+          </button>
         </div>
       </div>
 
-      {/* Messages Stream */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        <AnimatePresence>
-          {messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
-              className={cn(
-                "flex gap-3 max-w-[88%]",
-                msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-              )}
-            >
-              {/* Avatar */}
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold border",
-                  msg.role === "user"
-                    ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
-                    : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                )}
-              >
-                {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-              </div>
-
-              {/* Message Content Bubble */}
-              <div
-                className={cn(
-                  "rounded-2xl p-4 text-sm leading-relaxed shadow-sm",
-                  msg.role === "user"
-                    ? "bg-emerald-600 text-white rounded-tr-none"
-                    : "bg-white dark:bg-[#0b291f] text-slate-800 dark:text-slate-100 border border-emerald-500/20 rounded-tl-none"
-                )}
-              >
-                {/* Active Model Header (for Assistant) */}
-                {msg.role === "assistant" && msg.model && (
-                  <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-emerald-500/15 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <Sparkles className="w-3 h-3 text-amber-500" />
-                    <span>{msg.model}</span>
-                    {msg.isStreaming && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-1" />
-                    )}
-                  </div>
-                )}
-
-                {/* Body Text */}
-                <div className="whitespace-pre-wrap font-normal">
-                  {msg.content || (
-                    <span className="inline-flex items-center gap-1 text-slate-400 text-xs italic">
-                      <RefreshCw className="w-3 h-3 animate-spin" /> Retrieving verified official gazette records...
-                    </span>
-                  )}
+      <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-7 sm:py-7" role="log" aria-live="polite" aria-relevant="additions text" aria-label="Conversation">
+        {messages.map((message) => (
+            <div key={message.id} className={`flex max-w-[92%] gap-3 sm:max-w-[84%] ${message.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"}`}>
+            <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-sm ${message.role === "user" ? "bg-gradient-to-br from-[var(--brand-button)] to-[var(--brand-strong)] text-white" : "border border-[var(--line)] bg-[var(--bg-soft)] text-[var(--brand)]"}`}>
+              {message.role === "user" ? <User aria-hidden="true" className="h-4 w-4" /> : <Bot aria-hidden="true" className="h-4 w-4" />}
+            </span>
+            <div className={`min-w-0 rounded-2xl px-4 py-3.5 text-sm leading-6 sm:px-5 shadow-sm ${message.role === "user" ? "rounded-tr-sm bg-gradient-to-br from-[var(--brand-button)] to-[var(--brand-strong)] text-white" : "rounded-tl-sm border border-[var(--line)] bg-[var(--bg-surface)] text-[var(--text-primary)]"}`}>
+              {message.role === "assistant" && (
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-[var(--brand)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />
+                  <span>EduSetu Verified Guide</span>
                 </div>
-
-                {/* Document Citations Card */}
-                {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-emerald-500/15">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
-                      Verified Gazette Citations:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {msg.sources.map((s, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-700 dark:text-emerald-300 font-medium"
-                          title={`Page ${s.page || 1}`}
-                        >
-                          <FileText className="w-3 h-3" />
-                          <span className="truncate max-w-[180px]">{s.source}</span>
-                          {s.page && <span className="opacity-75">· P.{s.page}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              )}
+              <p className="whitespace-pre-wrap">{cleanPlainText(message.content) || <span className="inline-flex items-center gap-2 text-[var(--text-muted)]"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> Finding relevant guidance…</span>}</p>
+              {message.sources && message.sources.length > 0 && (
+                <div className="mt-3 border-t border-[var(--line)] pt-3">
+                  <p className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">Sources to check</p>
+                  <ul className="flex flex-wrap gap-2">
+                    {message.sources.map((source, index) => (
+                      <li key={`${source.source}-${index}`} className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs text-[var(--brand)]" title={source.page ? `Page ${source.page}` : source.source}>
+                        <FileText aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                        <span className="max-w-[220px] truncate">{source.source}</span>
+                        {source.page && <span className="shrink-0">· p. {source.page}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Prompt Recommendation Chips */}
-      <div className="px-6 py-2.5 border-t border-emerald-500/15 bg-white/40 dark:bg-emerald-950/20 flex items-center gap-2 overflow-x-auto no-scrollbar">
-        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">
-          Quick Ask:
-        </span>
-        {QUICK_PROMPTS.map((p, idx) => (
-          <button
-            key={idx}
-            onClick={() => handleSend(p.prompt)}
-            disabled={isLoading}
-            className="shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 transition duration-150 disabled:opacity-50"
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="border-t border-[var(--line)] bg-[var(--bg-body)] px-4 py-3 sm:px-6">
+        <p className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">Try asking</p>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {QUICK_PROMPTS.map((prompt) => (
+            <button key={prompt.label} type="button" onClick={() => void handleSend(prompt.prompt)} disabled={isLoading} className="prompt-chip">
+              {prompt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Input Bar */}
-      <div className="p-4 border-t border-emerald-500/20 bg-white/80 dark:bg-[#072118] flex items-center gap-3">
-        <div className="relative flex-1">
+      <form
+        onSubmit={(event) => { event.preventDefault(); void handleSend(); }}
+        className="flex items-end gap-3 border-t border-[var(--line)] bg-[var(--bg-surface)] px-4 py-4 sm:px-6"
+      >
+        <div className="min-w-0 flex-1">
+          <label htmlFor="advisor-question" className="mb-1.5 block text-xs font-semibold text-[var(--text-secondary)]">Your question</label>
           <input
+            id="advisor-question"
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder={
-              isOffline
-                ? "Ask offline records (PMSSS, NIT cutoffs, Reservation)..."
-                : "Ask about college cutoffs, PMSSS eligibility, S.O. 176..."
-            }
+            onChange={(event) => setInput(event.target.value)}
+            placeholder={isOffline ? "Ask about information available offline…" : "Ask about scholarships, admissions, colleges…"}
             disabled={isLoading}
-            className="w-full pl-4 pr-10 py-3 rounded-2xl text-sm bg-slate-50 dark:bg-emerald-950/60 border border-emerald-500/30 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-normal"
+            className="text-input"
           />
         </div>
-
-        <button
-          onClick={() => handleSend()}
-          disabled={!input.trim() || isLoading}
-          className="w-11 h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 disabled:opacity-40 disabled:cursor-not-allowed transition duration-150 shrink-0"
-        >
-          {isLoading ? (
-            <RefreshCw className="w-5 h-5 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4 ml-0.5" />
-          )}
+        <button type="submit" disabled={!input.trim() || isLoading} className="send-button" aria-label="Send question">
+          {isLoading ? <RefreshCw aria-hidden="true" className="h-5 w-5 animate-spin" /> : <Send aria-hidden="true" className="h-5 w-5" />}
         </button>
-      </div>
+      </form>
     </div>
   );
-};
+}

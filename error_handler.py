@@ -5,7 +5,6 @@ into human-friendly, actionable diagnostics with automatic 2G fallback options.
 """
 
 from typing import Dict, Any, Optional
-import streamlit as st
 import google.api_core.exceptions as google_exceptions
 
 
@@ -58,8 +57,7 @@ class ErrorDiagnostic:
                     "Don't worry — your app continues to function seamlessly using local 2G government records."
                 ),
                 "action_steps": [
-                    "**Streamlit Cloud Secrets**: Click **Manage app (⋮)** in the bottom right ➔ **Settings (⚙️)** ➔ **Secrets**. Ensure values are quoted: `GOOGLE_API_KEY = \"your_key\"`",
-                    "**Local Deployment**: Add `GOOGLE_API_KEY = \"...\"` inside `.streamlit/secrets.toml` or your `.env` file.",
+                    "Set `GOOGLE_API_KEY` in the backend deployment's environment variables or in a local `.env` file.",
                     "**Zero-Downtime 2G Edge**: Switch to **⚡ 2G Ultra-Lite (Offline)** in the sidebar to get instant answers with zero cloud dependencies."
                 ],
                 "fallback_available": True,
@@ -120,18 +118,18 @@ class ErrorDiagnostic:
                 "badge": "⚡ Summary Mode Active"
             }
 
-        # 5. ChromaDB / Vector Store Sync Issue
-        if "chroma" in err_msg or "collection" in err_msg or "sqlite" in err_msg:
+        # 5. Database / Vector Store Sync Issue
+        if any(term in err_msg for term in ("chroma", "pgvector", "postgres", "database", "collection", "sqlite")):
             return {
                 "category": "database",
                 "icon": "📚",
-                "title": "Vector Store Index Synchronization Notice",
+                "title": "Database Index Synchronization Notice",
                 "description": (
-                    "A local vector database lock or sync event occurred during retrieval."
+                    "The document index could not be reached during retrieval."
                 ),
                 "action_steps": [
-                    "Click **🗑️ Clear Chat History** to refresh application session state.",
-                    "The pre-computed 2G offline knowledge base remains 100% accessible."
+                    "Check the backend database connection and confirm the document index has been loaded.",
+                    "The offline guidance service remains available as a fallback."
                 ],
                 "fallback_available": True,
                 "badge": "⚡ 2G Pre-computed Mode Active"
@@ -153,31 +151,3 @@ class ErrorDiagnostic:
             "fallback_available": True,
             "badge": "⚡ Offline Resilience Active"
         }
-
-
-def render_error_card(error: Exception):
-    """Render a stylized, animated diagnostic card in Streamlit."""
-    diag = ErrorDiagnostic.classify(error)
-
-    st.markdown(f"""
-    <div style="background:linear-gradient(135deg, #FFF9F5 0%, #FFFFFF 100%);
-         border-radius:14px; padding:18px 20px; margin-bottom:14px;
-         border-left:5px solid #1A6B3C; box-shadow:0 4px 16px rgba(26,107,60,0.12);
-         border-top:1px solid #EBF5F0; border-right:1px solid #EBF5F0; border-bottom:1px solid #EBF5F0;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:15px;font-weight:700;color:#0D2137;">
-          {diag['icon']} {diag['title']}
-        </div>
-        <span style="background:rgba(26,107,60,0.15);color:#1A6B3C;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;">
-          {diag['badge']}
-        </span>
-      </div>
-      <div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:10px;">
-        {diag['description']}
-      </div>
-      <div style="background:rgba(27,58,75,0.04);border-radius:8px;padding:10px 14px;font-size:12px;color:#0D2137;line-height:1.6;">
-        <div style="font-weight:700;margin-bottom:4px;color:#1A6B3C;">💡 Recommended Steps:</div>
-        {"".join(f'<div style="margin-bottom:3px;">• {step}</div>' for step in diag['action_steps'])}
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
