@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function getBackendUrl() {
   const configuredUrl = process.env.BACKEND_API_URL;

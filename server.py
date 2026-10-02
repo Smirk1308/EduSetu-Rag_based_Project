@@ -80,6 +80,20 @@ rag_engine = RAGEngine()
 offline_engine = OfflineQueryEngine()
 
 
+@app.on_event("startup")
+async def startup_warmup():
+    """Asynchronously warm up embedding model in background thread so first query is 0ms."""
+    def _warm():
+        try:
+            if rag_engine.postgres_store:
+                rag_engine.postgres_store._embed(["Warmup EduSetu query"])
+                logger.info("Vector store embedding model warmed up successfully.")
+        except Exception as e:
+            logger.warning(f"Embedding warmup notice: {e}")
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, _warm)
+
+
 # ---------------------------------------------------------------------------
 # Request & Response Models
 # ---------------------------------------------------------------------------
