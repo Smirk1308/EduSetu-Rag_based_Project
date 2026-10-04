@@ -1,11 +1,58 @@
+# Environment variables
 .env
 .env.local
 .env.*.local
-.streamlit/secrets.toml
+
+# Python
 __pycache__/
 *.pyc
-.pytest_cache/
-chroma_db/
+*.pyo
+*.pyd
 .venv/
+venv/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+
+# Logs
+*.log
+
+# Legacy Streamlit (no longer used)
+.streamlit/
+
+# Legacy assets (duplicates of frontend/public/)
+assets/
+static/
+
+# ChromaDB local dev store
+chroma_db/
+
+# Node / Next.js
 node_modules/
 .next/
+frontend/.next/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Internal / AI-generated docs (not for public repo)
+BACKEND_REVIEW.md
+frontend/AGENTS.md
+frontend/CLAUDE.md
+frontend/design-qa.md
+
+# Legacy deployment files
+Procfile
+JK_EduSetu_SIH_Guide.pdf
+
+# QR images (not used by the app)
+edusetu_qr_code.jpg
+edusetu_qr_presentation_card.jpg

@@ -114,7 +114,7 @@ Frontend runs at: `http://localhost:3000`
 
 ### Deploy Backend to Railway
 1. In Railway, click **New Project** ➔ **Deploy from GitHub repo**.
-2. Railway will automatically detect the root `Dockerfile` and `railway.json`.
+2. Railway will automatically detect the root `Dockerfile`.
 3. Add Environment Variables in Railway Settings:
    ```
    GOOGLE_API_KEY = your_google_ai_studio_api_key
@@ -135,10 +135,13 @@ Frontend runs at: `http://localhost:3000`
 4. Deploy the backend with the verified source PDFs/TXT files in `docs/`, then run `python index_documents.py` once to create the vector index. Repeat after updating the official corpus.
 5. Check `/api/ready` before routing traffic. `/api/health` is a liveness check and intentionally does not prove database availability.
 
-The Supabase project `edusetu-prod` has been provisioned in Mumbai and the schema applied. The FastAPI deployment still needs its private `DATABASE_URL`, after which run the index command to populate the corpus. Re-indexing replaces the document corpus atomically; keep a database backup and review the source bundle first. Chat history is intentionally not persisted until user authentication and consent are in place.
+Re-indexing replaces the document corpus atomically; keep a database backup and review the source bundle first.
 
 ---
 
 ## 👨‍💻 Author & Credits
 - **Developed by**: **Shubh Sharma**, CSE, The National Institute of Engineering (NIE), Mysuru.
 - Dedicated to the students of Jammu, Kashmir & Ladakh.
+
+## 🌐 Live Demo
+**[jkedusetu.app](https://jkedusetu.app)**
