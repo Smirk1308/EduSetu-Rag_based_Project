@@ -61,7 +61,6 @@ Built with **Next.js (React 19)**, **Tailwind CSS**, and **Framer Motion**, pair
   - `gemini-3.1-flash-lite`: High-throughput 500 RPD fallback.
   - Self-healing circuit breaker that bypasses transient 503 or 429 errors silently.
 - **⚡ Sub-10ms 2G Mountain Edge Failover**: Instant offline responses from local gazette records for remote border areas (Gurez, Kupwara, Uri, Kargil).
-- **Multi-Language Support**: English, اردو (Urdu with RTL layout), हिंदी (Hindi), and کٲشُر (Kashmiri).
 
 ---
 
