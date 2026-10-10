@@ -1,5 +1,5 @@
 """
-2G Offline & Instant Query Engine for Margdarshak J&K.
+2G Offline & Instant Query Engine for J&K EduSetu.
 Provides sub-10ms, zero-API, offline-ready responses for top J&K education,
 scholarship, college cutoff, and career guidance questions with official citations.
 """

@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Landmark,
   Scale,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Zap,
@@ -27,7 +28,7 @@ const pathways = [
     id: "scholarships",
     title: "Scholarship guidance",
     description: "Understand eligibility, AICTE PMSSS benefits, and how to apply.",
-    badge: "15+ verified schemes",
+    badge: "15+ curated schemes",
     href: "/scholarships",
     icon: GraduationCap,
     tone: "mint",
@@ -44,8 +45,8 @@ const pathways = [
   {
     id: "colleges",
     title: "College & seat guidance",
-    description: "Explore 26 verified institutions, opening ranks, and courses.",
-    badge: "26 institutions verified",
+    description: "Explore 26 profiled institutions, indicative opening ranks, and courses.",
+    badge: "26 institutions profiled",
     href: "/colleges",
     icon: Landmark,
     tone: "gold",
@@ -70,7 +71,7 @@ const studentStages = [
   {
     stage: "UG & Professional",
     title: "Entrance aspirants",
-    description: "Get verified guidance on JEE Main, NEET UG, JKCET, CUET, and home-state reservation quotas.",
+    description: "Get indicative guidance on JEE Main, NEET UG, JKCET, CUET, and category quotas.",
     icon: Compass,
     badge: "Competitive Exams",
     highlights: [
@@ -88,8 +89,8 @@ const studentStages = [
     icon: GraduationCap,
     badge: "Colleges & Degrees",
     highlights: [
-      "26 verified UT engineering, medical & degree colleges",
-      "S.O. 176 (2024) reservation distribution rules",
+      "26 profiled UT engineering, medical & degree colleges",
+      "Indicative S.O. 176 (2024) reservation distribution",
       "Hostel availability, fees & NAAC accreditation",
     ],
     actionHref: "/colleges",
@@ -98,14 +99,69 @@ const studentStages = [
 ];
 
 const reservationCategories = [
-  { label: "Open Merit (OM)", percentage: "50%", desc: "General merit seats across all UT courses" },
-  { label: "Resident of Backward Area (RBA)", percentage: "10%", desc: "Certified residents of notified rural areas" },
-  { label: "Scheduled Tribe (ST)", percentage: "10%", desc: "Gujjars, Bakarwals, Balti, Gaddi & notified tribes" },
-  { label: "Economically Weaker Section (EWS)", percentage: "10%", desc: "Annual family income up to ₹8 Lakhs" },
-  { label: "Scheduled Caste (SC)", percentage: "8%", desc: "Notified SC communities of J&K" },
-  { label: "ALC / International Border", percentage: "4%", desc: "Residents along the Line of Control & IB" },
-  { label: "Other Social Castes (OSC)", percentage: "4%", desc: "Socially and educationally backward classes" },
-  { label: "Children of Defense / Sports", percentage: "4%", desc: "Paramilitary, police personnel & sports quota" },
+  {
+    label: "Open Merit (OM)",
+    percentage: "Indicative ~40%–50%",
+    desc: "Unreserved merit pool. Note: Effective percentage varies between central vs. UT institutions and remains subject to ongoing administrative and legal review.",
+    gazetteRef: "JKBOPEE Seat Matrix",
+    sourceUrl: "https://www.jkbopee.gov.in",
+  },
+  {
+    label: "Scheduled Tribe (ST-1)",
+    percentage: "10%",
+    desc: "Gujjars, Bakarwals, Baltis, Gaddis & historically notified tribes.",
+    gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
+  },
+  {
+    label: "Scheduled Tribe (ST-2)",
+    percentage: "10%",
+    desc: "Pahari Ethnic Group, Paddari Tribe, Koli, Gadda Brahmin (Total ST: 20%).",
+    gazetteRef: "Constitution (J&K) ST Act 2024",
+    sourceUrl: "https://tribal.nic.in",
+  },
+  {
+    label: "Resident of Backward Area (RBA)",
+    percentage: "10%",
+    desc: "Certified residents of notified rural areas (rationalized from former 20%/12%).",
+    gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
+  },
+  {
+    label: "Other Backward Classes (OBC)",
+    percentage: "8%",
+    desc: "Socially and educationally backward classes (enhanced from former 4% OSC).",
+    gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
+  },
+  {
+    label: "Scheduled Caste (SC)",
+    percentage: "8%",
+    desc: "Notified Scheduled Caste communities of Jammu & Kashmir.",
+    gazetteRef: "J&K Reservation Act",
+    sourceUrl: "https://jksocialwelfare.nic.in",
+  },
+  {
+    label: "Economically Weaker Section (EWS)",
+    percentage: "10%",
+    desc: "Gross annual family income below ₹8 Lakhs (applicable to unreserved categories).",
+    gazetteRef: "S.O. 127 / S.O. 176",
+    sourceUrl: "https://jksocialwelfare.nic.in",
+  },
+  {
+    label: "ALC / International Border (IB)",
+    percentage: "4%",
+    desc: "Residents living along the Line of Actual Control & International Border.",
+    gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
+  },
+  {
+    label: "Children of Defence / Sports",
+    percentage: "3% CDP + 2% Sports",
+    desc: "Children of Defence Personnel (3%) and Sports quota (2%) applied horizontally.",
+    gazetteRef: "JKBOPEE Rules",
+    sourceUrl: "https://www.jkbopee.gov.in",
+  },
 ];
 
 export default function Home() {
@@ -135,16 +191,16 @@ export default function Home() {
 
           <div className="relative z-10 mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-20 lg:py-24">
             <Reveal className="max-w-3xl">
-              {/* Dual Authority Badge */}
-              <div className="mb-6 inline-flex flex-wrap items-center gap-2 rounded-full border border-[var(--brand)]/25 bg-[var(--bg-surface)]/85 px-3.5 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-md">
-                <span className="flex items-center gap-1.5 text-[var(--brand)]">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Government of Jammu &amp; Kashmir
+              {/* Independent Unofficial Disclaimer Badge */}
+              <div className="mb-6 inline-flex flex-wrap items-center gap-2 rounded-full border border-amber-500/30 bg-[var(--bg-surface)]/90 px-3.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur-md">
+                <span className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  Independent &amp; Unofficial
                 </span>
                 <span className="text-[var(--text-muted)]">·</span>
-                <span className="text-[var(--text-secondary)]">Higher Education Department</span>
-                <span className="rounded-full bg-[var(--accent)]/15 px-2.5 py-0.5 text-[11px] font-bold text-[var(--accent)]">
-                  Personal Project by Shubh Sharma
+                <span className="text-[var(--text-secondary)]">Not affiliated with the Government of J&amp;K</span>
+                <span className="rounded-full bg-[var(--brand)]/10 px-2.5 py-0.5 text-[11px] font-bold text-[var(--brand)]">
+                  Project by Shubh Sharma
                 </span>
               </div>
 
@@ -158,9 +214,9 @@ export default function Home() {
 
               {/* Subtitle */}
               <p className="mt-6 max-w-2xl text-base leading-7 text-[var(--text-secondary)] sm:text-lg">
-                J&amp;K EduSetu is the official autonomous guidance platform for Jammu &amp; Kashmir students.
-                Find verified scholarship schemes, transparent admission roadmaps, and deterministic seat
-                reservation matrices—grounded in official UT Gazettes and built for 2G network resilience.
+                J&amp;K EduSetu is an independent student guidance initiative for Jammu, Kashmir &amp; Ladakh.
+                Explore indicative scholarship schemes, transparent admission roadmaps, and seat
+                reservation frameworks—designed with low-bandwidth 2G resilience to keep opportunities accessible.
               </p>
 
               {/* Primary Action Buttons */}
@@ -201,7 +257,7 @@ export default function Home() {
                     href="#advisor"
                     className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--bg-surface)]/80 px-3 py-1.5 text-xs text-[var(--text-secondary)] transition-all hover:border-[var(--brand)] hover:text-[var(--brand)] hover:shadow-sm"
                   >
-                    <span>S.O. 176 Quota Calculator</span>
+                    <span>Indicative Quota Guide (S.O. 176)</span>
                     <ArrowRight className="h-3 w-3" />
                   </a>
                   <a
@@ -223,22 +279,22 @@ export default function Home() {
             <div className="metric-card">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">Edge Engine</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">0.27 ms</p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">2G ultra-lite trie lookup for remote border regions</p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">2G ultra-lite lookup for low-connectivity border areas</p>
             </div>
             <div className="metric-card">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">Official Data</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">Curated Corpus</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">494+ Chunks</p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">Indexed from 12+ verified J&amp;K gazettes and notices</p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">Indexed from public J&amp;K notices, circulars &amp; guidebooks</p>
             </div>
             <div className="metric-card">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)]">Policy Audited</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)]">Policy Reference</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">S.O. 176</p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">Deterministic OM / RBA / SC / ST quota calculator</p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">Indicative reference breakdown of J&amp;K reservation rules</p>
             </div>
             <div className="metric-card">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">UT Catalogue</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">Directory</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">26 Colleges</p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">NIT, IIT, GMCs, GCET, and degree colleges verified</p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">NIT, GMCs, GCET, and UT universities profiled</p>
             </div>
           </div>
         </section>
@@ -310,13 +366,13 @@ export default function Home() {
           <div className="mx-auto max-w-7xl">
             <Reveal className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="eyebrow">Personal Policy &amp; Career Guidance</p>
+                <p className="eyebrow">Personal Educational &amp; Career Guidance</p>
                 <h2 className="font-display mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
                   Have a question? Start here.
                 </h2>
               </div>
               <p className="max-w-lg text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
-                Ask about scholarship eligibility, admission deadlines, colleges, or seat categories. Every response is verified against active UT gazettes with citation sources provided.
+                Ask about scholarship eligibility, admission deadlines, colleges, or seat categories. Answers are indicative guidelines grounded in public documents with source citations provided.
               </p>
             </Reveal>
             <Reveal delay={0.08}>
@@ -334,7 +390,7 @@ export default function Home() {
                 Support for every stage of your educational journey.
               </h2>
               <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">
-                Whether you are completing secondary school, writing competitive entrance exams, or selecting a higher education institution, EduSetu gives you clear milestones and verified official notices.
+                Whether you are completing secondary school, writing competitive entrance exams, or selecting a higher education institution, EduSetu gives you clear milestones and indicative summaries of public notices.
               </p>
             </Reveal>
 
@@ -390,30 +446,57 @@ export default function Home() {
               <div className="max-w-2xl">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold text-[var(--accent)] mb-3">
                   <Scale aria-hidden="true" className="h-3.5 w-3.5" />
-                  J&amp;K Reservation Rules · S.O. 176 (2024)
+                  Indicative J&amp;K Reservation Framework · S.O. 176 (2024)
                 </div>
                 <h2 className="font-display text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                   Understand the rules that shape your seat allocation.
                 </h2>
                 <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">
-                  The Jammu and Kashmir Reservation Rules (amended under S.O. 176 of 2024) govern all professional, engineering, and medical admissions. Review the official allocation breakdown:
+                  The Jammu and Kashmir Reservation Rules (amended under S.O. 176 of 15 March 2024) provide the following reference breakdown for professional and higher education admissions. Figures are indicative guidelines:
                 </p>
               </div>
               <a href="#advisor" className="button-secondary shrink-0 self-start lg:self-auto">
-                Calculate my quota category <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                Explore category guidelines <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </a>
             </Reveal>
 
             {/* Quota Breakdown Grid */}
             <Reveal delay={0.1}>
-              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                 {reservationCategories.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-4 shadow-sm transition-all hover:border-[var(--brand)]/40">
-                    <span className="block text-xs font-semibold text-[var(--text-muted)] leading-tight">{item.label}</span>
-                    <span className="block font-display text-2xl font-bold text-[var(--brand)] mt-1.5 sm:text-3xl">{item.percentage}</span>
-                    <p className="mt-1 text-xs leading-4 text-[var(--text-secondary)]">{item.desc}</p>
+                  <div key={item.label} className="flex flex-col justify-between rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-4 shadow-sm transition-all hover:border-[var(--brand)]/40">
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="block text-xs font-semibold text-[var(--text-muted)] leading-tight">{item.label}</span>
+                        {item.gazetteRef && (
+                          <a
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center gap-1 rounded bg-[var(--bg-soft)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--brand)] hover:underline"
+                            title={`Official source: ${item.gazetteRef}`}
+                          >
+                            <span>{item.gazetteRef}</span>
+                            <ExternalLink aria-hidden="true" className="h-2.5 w-2.5 opacity-60" />
+                          </a>
+                        )}
+                      </div>
+                      <span className="block font-display text-2xl font-bold text-[var(--brand)] mt-2 sm:text-3xl">{item.percentage}</span>
+                      <p className="mt-1.5 text-xs leading-4 text-[var(--text-secondary)]">{item.desc}</p>
+                    </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Legal Notice Banner */}
+              <div className="mt-6 rounded-xl border border-amber-500/25 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 text-xs text-amber-900 dark:text-amber-200">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  Indicative reference breakdown · Historical public notices (S.O. 176, March 2024)
+                </p>
+                <p className="mt-1 leading-5 text-[var(--text-secondary)]">
+                  Percentages above are indicative historical benchmarks and differ between UT colleges (JKBOPEE) and central institutions (JoSAA). Quota distributions remain subject to government review and litigation. Always verify the active seat matrix on the official <a href="https://jkbopee.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-[var(--brand)] hover:text-[var(--brand-strong)]">JKBOPEE portal</a>.
+                </p>
               </div>
             </Reveal>
           </div>
@@ -424,22 +507,22 @@ export default function Home() {
           <Reveal className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)]">
             <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
               <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">
-                <p className="eyebrow">Verified Institutions Directory</p>
+                <p className="eyebrow">Institutions Directory (Indicative)</p>
                 <h2 className="font-display mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                   Higher education opportunities across Jammu &amp; Kashmir.
                 </h2>
                 <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">
-                  Compare 26 verified institutions across Srinagar, Jammu, Anantnag, Baramulla, and remote border districts. Inspect previous year cutoffs, seat capacities, semester fees, and NAAC accreditations.
+                  Explore 26 profiled institutions across Srinagar, Jammu, Anantnag, Baramulla, and border districts. Compare indicative cutoffs, seat capacities, fee frameworks, and NAAC accreditations.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2">
                   <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">NIT Srinagar</span>
-                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">IIT Jammu</span>
-                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">IIM Jammu</span>
-                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">GMC Srinagar</span>
                   <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">GCET Jammu</span>
+                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">GMC Srinagar</span>
                   <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">University of Kashmir</span>
-                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">SMVDU Katra</span>
+                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">IUST Awantipora</span>
+                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">University of Jammu</span>
+                  <span className="rounded-lg bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">SKUAST Kashmir</span>
                 </div>
 
                 <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -470,9 +553,9 @@ export default function Home() {
         <section className="border-t border-[var(--line)] bg-[var(--bg-soft)] px-5 py-16 sm:px-8 sm:py-20">
           <div className="mx-auto max-w-7xl">
             <Reveal className="max-w-2xl mb-8">
-              <p className="eyebrow">Verified Gateways</p>
+              <p className="eyebrow">External Gateways</p>
               <h2 className="font-display mt-2 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-                Official Department Portals
+                Official Department &amp; University Portals
               </h2>
               <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">
                 Always confirm current deadlines, eligibility notifications, and application submissions through authorized government portals.
@@ -566,10 +649,12 @@ export default function Home() {
       <footer id="resources" className="scroll-mt-24 border-t border-[var(--line)] bg-[var(--bg-surface)] px-5 py-12 sm:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/jk_emblem.png" alt="Jammu and Kashmir Government emblem" width={40} height={50} className="h-12 w-10 object-contain" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-sm ring-1 ring-black/5">
+              <GraduationCap className="h-5 w-5 text-emerald-50" />
+            </div>
             <div>
               <p className="font-display text-lg font-bold">J&amp;K EduSetu</p>
-              <p className="text-sm text-[var(--text-secondary)]">Autonomous Education, Career &amp; Policy Gateway for J&amp;K · Developed by Shubh Sharma</p>
+              <p className="text-sm text-[var(--text-secondary)]">Independent Student Guidance Resource for J&amp;K · Developed by Shubh Sharma</p>
             </div>
           </div>
           <nav aria-label="Official resources" className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--text-secondary)]">
@@ -581,6 +666,17 @@ export default function Home() {
           <a href="#top" className="footer-link inline-flex items-center gap-2 text-sm font-semibold">
             Back to top <ArrowRight aria-hidden="true" className="h-4 w-4 -rotate-90" />
           </a>
+        </div>
+
+        {/* Prominent Legal Disclaimer */}
+        <div className="mx-auto mt-8 max-w-7xl border-t border-[var(--line)] pt-6 text-xs text-[var(--text-muted)] leading-relaxed">
+          <p className="font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            Disclaimer &amp; Independent Project Notice
+          </p>
+          <p className="mt-1">
+            J&amp;K EduSetu is an independent educational guidance platform created and maintained by Shubh Sharma. It is <strong>not affiliated with, authorized, maintained, sponsored, or endorsed by the Government of Jammu &amp; Kashmir</strong>, the Higher Education Department, JKBOPEE, AICTE, or any official government body. All information, cutoffs, eligibility criteria, and seat allocation figures shown are <strong>indicative</strong> and provided for personal informational guidance only. Always confirm official dates, eligibility criteria, and rules directly on the respective official portal (<a href="https://jkbopee.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-medium text-[var(--brand)] hover:underline">jkbopee.gov.in</a>, <a href="https://www.aicte-india.org/bureaus/jk" target="_blank" rel="noopener noreferrer" className="underline font-medium text-[var(--brand)] hover:underline">aicte-india.org</a>) before making educational or financial decisions.
+          </p>
         </div>
       </footer>
     </div>

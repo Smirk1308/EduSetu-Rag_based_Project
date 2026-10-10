@@ -661,7 +661,11 @@ def search_colleges(query: str, district: str = None, college_type: str = None, 
             cat_key = f"seats_{category.lower()}"
             has_seats = False
             for b in college.get("branches", []):
-                if b.get(cat_key, 0) > 0 or b.get("total_seats", 0) > 0:
+                if cat_key in b:
+                    if b.get(cat_key, 0) > 0:
+                        has_seats = True
+                        break
+                elif b.get("total_seats", 0) > 0:
                     has_seats = True
                     break
             if not has_seats:
