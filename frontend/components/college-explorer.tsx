@@ -141,13 +141,13 @@ export function CollegeExplorer() {
       </section>
 
       {/* Indicative Notice Banner */}
-      <div className="rounded-xl border border-amber-500/25 bg-amber-50/70 dark:bg-amber-950/30 p-4 text-xs text-amber-900 dark:text-amber-200">
+      <div className="rounded-xl border border-amber-500/25 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 text-xs text-amber-900 dark:text-amber-200">
         <p className="font-semibold flex items-center gap-1.5">
           <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-          Indicative Directory Only · Unofficial Guide · Last Updated: Academic Session 2024–25
+          Indicative Directory Only · Historical Admission Records
         </p>
         <p className="mt-1 text-[var(--text-secondary)] leading-5">
-          Seat distributions, fee structures, and entry cutoff ranks shown below are indicative reference estimates compiled from historical BOPEE bulletins, JoSAA allocation records, and college brochures. Exact seat matrices and fee notifications change annually. Always verify current details on the official <a href="https://jkbopee.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-[var(--brand)] hover:underline">JKBOPEE portal</a> or the institution&apos;s website.
+          Seat distributions, fee structures, and entry cutoff ranks shown below are indicative reference estimates compiled from past BOPEE bulletins and college brochures. Exact seat matrices change annually. Always verify current details on the official <a href="https://jkbopee.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-[var(--brand)] hover:underline">JKBOPEE portal</a> or the institution&apos;s website.
         </p>
       </div>
 
@@ -194,14 +194,13 @@ export function CollegeExplorer() {
             </select>
           </label>
           <label>
-            Seat category
+            Seat category (supported subset)
             <select value={category} onChange={(event) => setCategory(event.target.value)}>
-              <option value="">Any category</option>
-              {["OM", "SC", "ST", "RBA", "EWS", "OBC"].map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
+              <option value="">All categories</option>
+              <option value="OM">Open Merit (OM)</option>
+              <option value="SC">Scheduled Caste (SC)</option>
+              <option value="ST">Scheduled Tribe (ST)</option>
+              <option value="RBA">Resident of Backward Area (RBA)</option>
             </select>
           </label>
         </div>

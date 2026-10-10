@@ -102,56 +102,65 @@ const reservationCategories = [
   {
     label: "Open Merit (OM)",
     percentage: "Indicative ~40%–50%",
-    desc: "Unreserved merit pool. Note: Effective percentage varies across central vs UT institutions and is subject to active review.",
-    gazetteRef: "JKBOPEE Seat Matrix Bulletin",
+    desc: "Unreserved merit pool. Note: Effective percentage varies between central vs. UT institutions and remains subject to ongoing administrative and legal review.",
+    gazetteRef: "JKBOPEE Seat Matrix",
+    sourceUrl: "https://www.jkbopee.gov.in",
   },
   {
     label: "Scheduled Tribe (ST-1)",
     percentage: "10%",
     desc: "Gujjars, Bakarwals, Baltis, Gaddis & historically notified tribes.",
-    gazetteRef: "S.O. 176 (2024) Rule 13",
+    gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
   },
   {
     label: "Scheduled Tribe (ST-2)",
     percentage: "10%",
     desc: "Pahari Ethnic Group, Paddari Tribe, Koli, Gadda Brahmin (Total ST: 20%).",
-    gazetteRef: "Constitution (J&K) ST Order / S.O. 176",
+    gazetteRef: "Constitution (J&K) ST Act 2024",
+    sourceUrl: "https://tribal.nic.in",
   },
   {
     label: "Resident of Backward Area (RBA)",
     percentage: "10%",
-    desc: "Certified residents of notified rural areas (rationalized from 20%/12%).",
-    gazetteRef: "S.O. 176 (2024) Rule 13",
+    desc: "Certified residents of notified rural areas (rationalized from former 20%/12%).",
+    gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
   },
   {
     label: "Other Backward Classes (OBC)",
     percentage: "8%",
     desc: "Socially and educationally backward classes (enhanced from former 4% OSC).",
-    gazetteRef: "S.O. 176 (2024) Schedule II",
+    gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
   },
   {
     label: "Scheduled Caste (SC)",
     percentage: "8%",
     desc: "Notified Scheduled Caste communities of Jammu & Kashmir.",
-    gazetteRef: "J&K Reservation Act & Rules",
+    gazetteRef: "J&K Reservation Act",
+    sourceUrl: "https://jksocialwelfare.nic.in",
   },
   {
     label: "Economically Weaker Section (EWS)",
     percentage: "10%",
     desc: "Gross annual family income below ₹8 Lakhs (applicable to unreserved categories).",
-    gazetteRef: "S.O. 127 / S.O. 176 (2024)",
+    gazetteRef: "S.O. 127 / S.O. 176",
+    sourceUrl: "https://jksocialwelfare.nic.in",
   },
   {
     label: "ALC / International Border (IB)",
     percentage: "4%",
     desc: "Residents living along the Line of Actual Control & International Border.",
     gazetteRef: "S.O. 176 (2024)",
+    sourceUrl: "https://jksocialwelfare.nic.in",
   },
   {
     label: "Children of Defence / Sports",
     percentage: "3% CDP + 2% Sports",
     desc: "Children of Defence Personnel (3%) and Sports quota (2%) applied horizontally.",
-    gazetteRef: "JKBOPEE Rules / S.O. 176",
+    gazetteRef: "JKBOPEE Rules",
+    sourceUrl: "https://www.jkbopee.gov.in",
   },
 ];
 
@@ -460,9 +469,16 @@ export default function Home() {
                       <div className="flex items-start justify-between gap-2">
                         <span className="block text-xs font-semibold text-[var(--text-muted)] leading-tight">{item.label}</span>
                         {item.gazetteRef && (
-                          <span className="shrink-0 rounded bg-[var(--bg-soft)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--brand)]">
-                            {item.gazetteRef}
-                          </span>
+                          <a
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center gap-1 rounded bg-[var(--bg-soft)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--brand)] hover:underline"
+                            title={`Official source: ${item.gazetteRef}`}
+                          >
+                            <span>{item.gazetteRef}</span>
+                            <ExternalLink aria-hidden="true" className="h-2.5 w-2.5 opacity-60" />
+                          </a>
                         )}
                       </div>
                       <span className="block font-display text-2xl font-bold text-[var(--brand)] mt-2 sm:text-3xl">{item.percentage}</span>
@@ -472,14 +488,14 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Legal Notice & Timestamp Banner */}
-              <div className="mt-6 rounded-xl border border-amber-500/25 bg-amber-50/70 dark:bg-amber-950/30 p-4 text-xs text-amber-900 dark:text-amber-200">
+              {/* Legal Notice Banner */}
+              <div className="mt-6 rounded-xl border border-amber-500/25 bg-amber-50/70 dark:bg-amber-950/30 p-3.5 text-xs text-amber-900 dark:text-amber-200">
                 <p className="font-semibold flex items-center gap-1.5">
                   <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  Indicative Guidance Only · Reference S.O. 176 (15 March 2024) · Last Updated: Academic Session 2024–25
+                  Indicative reference breakdown · Historical public notices (S.O. 176, March 2024)
                 </p>
                 <p className="mt-1 leading-5 text-[var(--text-secondary)]">
-                  Reservation percentages above reflect S.O. 176 (2024) issued by the J&amp;K Social Welfare Department. Open Merit (OM) and category distributions differ across central institutions (like NIT Srinagar, governed by Central JoSAA) versus UT institutions (JKBOPEE). Category availability is subject to pending legal and administrative reviews. Always consult the official <a href="https://jkbopee.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-[var(--brand)] hover:text-[var(--brand-strong)]">JKBOPEE seat matrix bulletin</a> for legally binding cutoffs and quotas.
+                  Percentages above are indicative historical benchmarks and differ between UT colleges (JKBOPEE) and central institutions (JoSAA). Quota distributions remain subject to government review and litigation. Always verify the active seat matrix on the official <a href="https://jkbopee.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-[var(--brand)] hover:text-[var(--brand-strong)]">JKBOPEE portal</a>.
                 </p>
               </div>
             </Reveal>
