@@ -296,7 +296,7 @@ def record_model_usage(model_id: str, tier: str | None = None) -> None:
 
 def mark_model_cooldown(model_id: str, error_text: str, now: float | None = None) -> None:
     """Temporarily bypass a failed model, respecting provider retry hints."""
-    if model_id not in MODEL_FLEET:
+    if not model_id:
         return
     _init_usage()
     lowered = error_text.lower()
@@ -314,15 +314,15 @@ def mark_model_cooldown(model_id: str, error_text: str, now: float | None = None
 
 def mark_provider_cooldown(provider: str, error_text: str, now: float | None = None) -> None:
     """Pause a provider after quota or service errors to avoid wasting its shared quota."""
-    if provider not in {"google", "groq"}:
+    if provider not in {"google", "groq", "openai"}:
         return
 
     lowered = error_text.lower()
-    if any(token in lowered for token in ("429", "resource_exhausted", "rate limit", "quota")):
-        default_seconds = 3600 if any(token in lowered for token in ("per day", "per-day", "per_day", "perday", "rpd", "daily quota")) else 60
-    elif any(token in lowered for token in ("503", "unavailable", "502", "500", "timeout")):
+    if any(token in lowered for token in ("429", "resource_exhausted", "rate limit", "quota", "insufficient_quota")):
+        default_seconds = 3600 if any(token in lowered for token in ("per day", "per-day", "per_day", "perday", "rpd", "daily quota", "exceeded your current quota")) else 60
+    elif any(token in lowered for token in ("503", "unavailable", "502", "500", "timeout", "server_error")):
         default_seconds = 30
-    elif any(token in lowered for token in ("401", "403", "unauthorized", "forbidden")):
+    elif any(token in lowered for token in ("401", "403", "unauthorized", "forbidden", "invalid_api_key", "incorrect api key")):
         default_seconds = 300
     else:
         return
@@ -427,7 +427,7 @@ def get_llm(query: str = "", history_length: int = 0):
     import api_key_helper
 
     google_api_key = api_key_helper.get_google_api_key()
-    groq_api_key = api_key_helper.get_groq_api_key()
+    openai_api_key = api_key_helper.get_openai_api_key()
 
     if google_api_key:
         llm_kwargs = dict(
@@ -438,6 +438,20 @@ def get_llm(query: str = "", history_length: int = 0):
         )
         return ChatGoogleGenerativeAI(**llm_kwargs)
 
+    if openai_api_key:
+        openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
+        try:
+            from langchain_openai import ChatOpenAI
+            return ChatOpenAI(
+                model=openai_model,
+                api_key=openai_api_key,
+                temperature=0.2,
+                max_tokens=model_info["max_tokens"],
+            )
+        except ImportError:
+            pass
+
+    groq_api_key = api_key_helper.get_groq_api_key()
     if groq_api_key:
         from langchain_groq import ChatGroq
         return ChatGroq(

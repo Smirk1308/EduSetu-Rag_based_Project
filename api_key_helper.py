@@ -34,6 +34,13 @@ def get_google_api_key() -> str:
     return key
 
 
+def get_openai_api_key() -> str:
+    key = _first_configured("OPENAI_API_KEY", "OPENAI_KEY")
+    if key:
+        os.environ.setdefault("OPENAI_API_KEY", key)
+    return key
+
+
 def get_groq_api_key() -> str:
     key = _first_configured("GROQ_API_KEY", "GROQ_KEY")
     if key:
@@ -49,19 +56,22 @@ def get_admin_password() -> str:
 def get_api_diagnostics() -> Dict[str, Any]:
     """Return provider configuration status without returning secret values."""
     google_key = get_google_api_key()
+    openai_key = get_openai_api_key()
     groq_key = get_groq_api_key()
     return {
         "google_configured": bool(google_key),
         "google_masked": _mask_key(google_key),
+        "openai_configured": bool(openai_key),
+        "openai_masked": _mask_key(openai_key),
         "groq_configured": bool(groq_key),
         "groq_masked": _mask_key(groq_key),
         "mode": (
-            "Dual Engine (Gemini + Groq)"
-            if google_key and groq_key
+            "Dual Engine (Gemini + OpenAI)"
+            if google_key and openai_key
             else "Gemini Primary"
             if google_key
-            else "Groq Fallback"
-            if groq_key
+            else "OpenAI Fallback"
+            if openai_key
             else "Offline Guidance"
         ),
     }

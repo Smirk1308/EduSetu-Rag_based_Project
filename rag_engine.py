@@ -21,6 +21,7 @@ import tiktoken
 import chromadb
 from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
 from groq import Groq
+from openai import OpenAI
 import logging
 from google import genai
 from google.genai import types
@@ -35,6 +36,7 @@ CHROMA_DIR = os.path.join(BASE_DIR, "chroma_db")
 COLLECTION_NAME = "career_advisor_docs"
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b"
+DEFAULT_OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
 
 # Token Splitting Settings
 CHUNK_SIZE = 300
@@ -167,6 +169,31 @@ def _is_google_provider_wide_error(error_text: str) -> bool:
         for token in ("429", "resource_exhausted", "rate limit", "quota", "401", "403", "unauthorized", "forbidden")
     )
 
+
+def _sanitize_error_category(err: Any) -> str:
+    """Return a high-level category/status code without logging secrets or prompts."""
+    err_str = str(err)
+    lowered = err_str.lower()
+    if any(k in lowered for k in ("429", "resource_exhausted", "quota", "rate limit", "rate_limit")):
+        return "429_quota_limit"
+    if any(k in lowered for k in ("503", "unavailable")):
+        return "503_service_unavailable"
+    if any(k in lowered for k in ("500", "internal")):
+        return "500_internal_error"
+    if any(k in lowered for k in ("502", "bad gateway")):
+        return "502_bad_gateway"
+    if any(k in lowered for k in ("404", "not_found", "model_not_found")):
+        return "404_not_found"
+    if any(k in lowered for k in ("401", "unauthorized", "invalid_api_key", "invalid api key")):
+        return "401_unauthorized"
+    if any(k in lowered for k in ("403", "forbidden", "permission_denied")):
+        return "403_forbidden"
+    if any(k in lowered for k in ("timeout", "timed out")):
+        return "timeout"
+    if any(k in lowered for k in ("connection", "connect")):
+        return "network_connection_error"
+    return "transient_error"
+
 class LazySentenceTransformerEmbeddingFunction(EmbeddingFunction[Documents]):
     """ChromaDB-compatible lazy embedding function that delays sentence_transformers & torch loading until first retrieval."""
     def __init__(self, model_name: str = EMBEDDING_MODEL_NAME):
@@ -290,6 +317,8 @@ class RAGEngine:
         # Persistent clients
         self._genai_client = None
         self._current_genai_key = None
+        self._openai_client = None
+        self._current_openai_key = None
         self._groq_client = None
         self._current_groq_key = None
 
@@ -304,6 +333,13 @@ class RAGEngine:
             self._genai_client = genai.Client(api_key=api_key)
             self._current_genai_key = api_key
         return self._genai_client
+
+    def get_openai_client(self, api_key: str) -> OpenAI:
+        """Cache and return persistent OpenAI client with bounded timeouts and retries."""
+        if self._openai_client is None or getattr(self, "_current_openai_key", None) != api_key:
+            self._openai_client = OpenAI(api_key=api_key, timeout=30.0, max_retries=2)
+            self._current_openai_key = api_key
+        return self._openai_client
 
     def get_groq_client(self, api_key: str) -> Groq:
         """Cache and return persistent Groq client."""
@@ -711,13 +747,15 @@ Instructions:
         query: str,
         api_key: Optional[str] = None,
         google_api_key: Optional[str] = None,
-        model: str = DEFAULT_GROQ_MODEL,
+        model: Optional[str] = None,
         top_k: int = 5,
         history: Optional[List[Dict[str, str]]] = None,
         language: Optional[str] = None,
-        stream: bool = False
+        stream: bool = False,
+        openai_api_key: Optional[str] = None,
+        openai_model: Optional[str] = None,
     ) -> Any:
-        """Retrieve grounded context and route generation across Groq and Gemini."""
+        """Retrieve grounded context and route generation across Gemini primary and OpenAI fallback."""
         # Resolve conversation history
         effective_history = history
         if effective_history is None:
@@ -793,106 +831,42 @@ Instructions:
         active_model_id = routed_cfg["model_id"]
         max_tokens_to_use = routed_cfg.get("max_tokens", 3072)
 
-        # Resolve Gemini and Groq API Keys via centralized resilient helper
+        # Resolve Gemini, OpenAI, and Groq API Keys via centralized resilient helper
         import api_key_helper
-        resolved_google_key = str(google_api_key).strip().strip("'").strip('"').strip() if google_api_key else ""
-        if not resolved_google_key:
+        if google_api_key is not None:
+            resolved_google_key = str(google_api_key).strip().strip("'").strip('"').strip()
+        else:
             resolved_google_key = api_key_helper.get_google_api_key()
 
-        resolved_groq_key = str(api_key).strip().strip("'").strip('"').strip() if api_key else ""
-        if not resolved_groq_key:
-            resolved_groq_key = api_key_helper.get_groq_api_key()
+        if openai_api_key is not None:
+            resolved_openai_key = str(openai_api_key).strip().strip("'").strip('"').strip()
+        else:
+            resolved_openai_key = api_key_helper.get_openai_api_key()
+
+        resolved_openai_model = (
+            openai_model
+            or os.getenv("OPENAI_MODEL", "").strip()
+            or DEFAULT_OPENAI_MODEL
+        )
 
         active_tier = routed_cfg.get("tier", "simple")
         system_content = SYSTEM_PROMPTS.get(active_tier, SYSTEM_PROMPTS["simple"])
         if language and language != "English":
             system_content += f" Respond in {language}, using clear and natural language."
 
-        # Prepare messages for Groq fallback
-        groq_messages = [{"role": "system", "content": system_content}]
+        # Prepare messages for OpenAI fallback
+        openai_messages = [{"role": "system", "content": system_content}]
         if effective_history:
             max_msgs = exchanges_to_keep * 2
             recent_turns = [turn for turn in effective_history if turn.get("role") in ["user", "assistant"]][-max_msgs:]
             for turn in recent_turns:
                 role = "user" if turn.get("role") == "user" else "assistant"
-                groq_messages.append({"role": role, "content": turn.get("content", "")})
-        groq_messages.append({"role": "user", "content": prompt})
+                openai_messages.append({"role": role, "content": turn.get("content", "")})
+        openai_messages.append({"role": "user", "content": prompt})
 
-        # Ensure Groq model is strictly a Groq-hosted model, NEVER a Gemini model ID!
-        groq_model = DEFAULT_GROQ_MODEL
-        if model and not any(p in model.lower() for p in ["gemini", "gpt", "claude"]) and not any(d in model for d in ["llama3-8b-8192", "llama3-70b-8192"]):
-            groq_model = model
-
-        # Use Groq's independent quota for everyday questions; preserve Gemini for
-        # complex questions and as a fallback when the preferred provider is limited.
-        if active_tier in {"simple", "medium"} and resolved_groq_key and provider_is_available("groq"):
-            try:
-                groq_client = self.get_groq_client(resolved_groq_key)
-                if stream:
-                    stream_response = groq_client.chat.completions.create(
-                        model=groq_model,
-                        messages=groq_messages,
-                        max_tokens=min(max_tokens_to_use, 2048),
-                        temperature=0.3,
-                        stream=True,
-                    )
-                    stream_iterator = iter(stream_response)
-                    first_chunk = next(stream_iterator, None)
-
-                    def groq_primary_stream() -> Generator[str, None, None]:
-                        answer_parts: List[str] = []
-                        chunks = [first_chunk] if first_chunk is not None else []
-                        try:
-                            for chunk in chunks:
-                                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                                    content = chunk.choices[0].delta.content
-                                    answer_parts.append(content)
-                                    yield content
-                            for chunk in stream_iterator:
-                                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                                    content = chunk.choices[0].delta.content
-                                    answer_parts.append(content)
-                                    yield content
-                            if not answer_parts:
-                                raise RuntimeError("Groq returned an empty response")
-                            _store_cached_response(cache_key, {
-                                "answer": "".join(answer_parts),
-                                "sources": context_chunks,
-                                "search_query": search_query,
-                                "model_used": f"{groq_model} (Groq)",
-                            })
-                        except Exception as groq_stream_error:
-                            mark_provider_cooldown("groq", str(groq_stream_error))
-                            logger.warning("Groq primary stream interrupted: %s", groq_stream_error)
-                            raise
-
-                    return {
-                        "stream": groq_primary_stream(),
-                        "sources": context_chunks,
-                        "search_query": search_query,
-                        "model_used": f"{groq_model} (Groq)",
-                    }
-
-                response = groq_client.chat.completions.create(
-                    model=groq_model,
-                    messages=groq_messages,
-                    max_tokens=min(max_tokens_to_use, 2048),
-                    temperature=0.3,
-                )
-                content = response.choices[0].message.content if response.choices else ""
-                if not content or not content.strip():
-                    raise RuntimeError("Groq returned an empty response")
-                groq_result = {
-                    "answer": content or "",
-                    "sources": context_chunks,
-                    "search_query": search_query,
-                    "model_used": f"{groq_model} (Groq)",
-                }
-                _store_cached_response(cache_key, groq_result)
-                return groq_result
-            except Exception as groq_error:
-                mark_provider_cooldown("groq", str(groq_error))
-                logger.warning("Groq primary attempt failed; trying Gemini if available: %s", groq_error)
+        # Ensure at least one active provider is configured before proceeding
+        if not resolved_google_key and not resolved_openai_key:
+            raise ValueError("Neither GOOGLE_API_KEY nor OPENAI_API_KEY is configured in the backend environment.")
 
         # 1. Attempt Primary: Gemini via Google GenAI SDK (Sub-second TTFT, multilingual)
         client_genai = None
@@ -900,34 +874,35 @@ Instructions:
             try:
                 client_genai = self.get_genai_client(resolved_google_key)
             except Exception as google_error:
+                sanitized_cat = _sanitize_error_category(google_error)
                 mark_provider_cooldown("google", str(google_error))
-                logger.warning("Gemini client initialization failed: %s", google_error)
+                logger.warning("Gemini client initialization failed (%s)", sanitized_cat)
 
-        if client_genai:
+        # Format conversation history for google.genai chat
+        genai_history = []
+        if effective_history:
+            max_msgs = exchanges_to_keep * 2
+            recent_turns = [turn for turn in effective_history if turn.get("role") in ["user", "assistant"]][-max_msgs:]
+            for turn in recent_turns:
+                role = "user" if turn.get("role") == "user" else "model"
+                genai_history.append(
+                    types.Content(role=role, parts=[types.Part.from_text(text=turn.get("content", ""))])
+                )
 
-            # Format conversation history for google.genai chat
-            genai_history = []
-            if effective_history:
-                max_msgs = exchanges_to_keep * 2
-                recent_turns = [turn for turn in effective_history if turn.get("role") in ["user", "assistant"]][-max_msgs:]
-                for turn in recent_turns:
-                    role = "user" if turn.get("role") == "user" else "model"
-                    genai_history.append(
-                        types.Content(role=role, parts=[types.Part.from_text(text=turn.get("content", ""))])
-                    )
+        # Candidate Gemini models: active routed model first, followed by resilient pool
+        candidate_models = [active_model_id]
+        for cm in GEMINI_FALLBACK_POOL:
+            if cm not in candidate_models:
+                candidate_models.append(cm)
+        candidate_models = [candidate for candidate in candidate_models if model_is_available(candidate)]
 
-            # Candidate Gemini models: active routed model first, followed by resilient pool
-            candidate_models = [active_model_id]
-            for cm in GEMINI_FALLBACK_POOL:
-                if cm not in candidate_models:
-                    candidate_models.append(cm)
-            candidate_models = [candidate for candidate in candidate_models if model_is_available(candidate)]
-
-            if stream:
-                def dynamic_stream_generator() -> Generator[str, None, None]:
-                    gemini_streamed_any = False
-                    answer_parts: List[str] = []
+        if stream:
+            def dynamic_stream_generator() -> Generator[str, None, None]:
+                gemini_streamed_any = False
+                answer_parts: List[str] = []
+                if client_genai and provider_is_available("google"):
                     for try_model in candidate_models:
+                        logger.info("Attempting primary provider Gemini streaming with model '%s'", try_model)
                         try:
                             gen_config = types.GenerateContentConfig(
                                 system_instruction=system_content,
@@ -945,15 +920,17 @@ Instructions:
                             response_stream = chat.send_message_stream(prompt)
                             stream_iter = iter(response_stream)
                             first_chunk = next(stream_iter, None)
-                            record_model_usage(try_model)
 
                             if first_chunk and first_chunk.text:
                                 gemini_streamed_any = True
+                                record_model_usage(try_model)
                                 answer_parts.append(first_chunk.text)
                                 yield first_chunk.text
 
                             for chunk in stream_iter:
                                 if chunk.text:
+                                    if not gemini_streamed_any:
+                                        record_model_usage(try_model)
                                     gemini_streamed_any = True
                                     answer_parts.append(chunk.text)
                                     yield chunk.text
@@ -968,59 +945,81 @@ Instructions:
                             return
                         except Exception as try_err:
                             err_str = str(try_err)
+                            sanitized_cat = _sanitize_error_category(try_err)
                             if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                                 mark_model_cooldown(try_model, err_str)
                             if _is_google_provider_wide_error(err_str):
                                 mark_provider_cooldown("google", err_str)
-                            logger.warning(f"Gemini streaming attempt on '{try_model}' failed: {try_err}. Checking next candidate in pool...")
+                            logger.warning(
+                                "Gemini streaming attempt on '%s' failed (%s). Checking next candidate in pool...",
+                                try_model, sanitized_cat
+                            )
+                            # CRITICAL SAFETY: If Gemini has already emitted content tokens,
+                            # do NOT silently start a second answer that would be appended!
+                            # Re-raise immediately to terminate the stream safely.
                             if gemini_streamed_any:
                                 raise
                             if not provider_is_available("google"):
+                                logger.warning("Google provider is cooling down. Stopping Gemini candidate search.")
                                 break
                             continue
 
-                    # If all Gemini models in candidate_models failed, try Groq fallback
-                    if resolved_groq_key and provider_is_available("groq"):
-                        logger.warning("All Gemini candidate models failed. Falling back to Groq stream...")
-                        try:
-                            groq_client = self.get_groq_client(resolved_groq_key)
-                            stream_resp = groq_client.chat.completions.create(
-                                model=groq_model,
-                                messages=groq_messages,
-                                max_tokens=2048,
-                                temperature=0.3,
-                                stream=True
-                            )
-                            for chunk in stream_resp:
-                                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                                    content = chunk.choices[0].delta.content
-                                    answer_parts.append(content)
-                                    yield content
-                            if not answer_parts:
-                                raise RuntimeError("Groq returned an empty response")
-                            _store_cached_response(cache_key, {
-                                "answer": "".join(answer_parts),
-                                "sources": context_chunks,
-                                "search_query": search_query,
-                                "model_used": f"{groq_model} (Groq Fallback)",
-                            })
-                            return
-                        except Exception as groq_err:
-                            mark_provider_cooldown("groq", str(groq_err))
-                            logger.error(f"Groq stream fallback also failed: {groq_err}")
-                            raise groq_err
+                # If all Gemini models in candidate_models failed before emitting content, try OpenAI fallback
+                logger.warning("All Gemini candidate models failed to stream before emitting content.")
 
-                    raise RuntimeError("All Gemini candidate models and Groq fallback failed to stream.")
+                if not resolved_openai_key:
+                    logger.info("OpenAI fallback skipped: OPENAI_API_KEY is not configured.")
+                    raise RuntimeError("All Gemini candidate models failed to stream. OpenAI fallback skipped because OPENAI_API_KEY is not configured.")
 
-                return {
-                    "stream": dynamic_stream_generator(),
-                    "sources": context_chunks,
-                    "search_query": search_query,
-                    "model_used": active_model_id
-                }
-            else:
-                last_gemini_err = None
+                if not provider_is_available("openai"):
+                    logger.warning("OpenAI fallback skipped: OpenAI provider is cooling down.")
+                    raise RuntimeError("All Gemini candidate models failed to stream. OpenAI fallback skipped because OpenAI provider is cooling down.")
+
+                logger.info("Attempting fallback provider OpenAI streaming with model '%s'", resolved_openai_model)
+                try:
+                    openai_client = self.get_openai_client(resolved_openai_key)
+                    stream_resp = openai_client.chat.completions.create(
+                        model=resolved_openai_model,
+                        messages=openai_messages,
+                        max_tokens=min(max_tokens_to_use, 2048),
+                        temperature=0.3,
+                        stream=True,
+                    )
+                    openai_streamed_any = False
+                    for chunk in stream_resp:
+                        if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                            content = chunk.choices[0].delta.content
+                            openai_streamed_any = True
+                            answer_parts.append(content)
+                            yield content
+                    if not openai_streamed_any:
+                        raise RuntimeError(f"OpenAI model '{resolved_openai_model}' returned an empty response")
+                    _store_cached_response(cache_key, {
+                        "answer": "".join(answer_parts),
+                        "sources": context_chunks,
+                        "search_query": search_query,
+                        "model_used": f"{resolved_openai_model} (OpenAI Fallback)",
+                    })
+                    logger.info("OpenAI streaming fallback succeeded with model '%s'", resolved_openai_model)
+                    return
+                except Exception as openai_err:
+                    sanitized_cat = _sanitize_error_category(openai_err)
+                    mark_provider_cooldown("openai", str(openai_err))
+                    mark_model_cooldown(resolved_openai_model, str(openai_err))
+                    logger.error("OpenAI fallback failed with model '%s' (%s)", resolved_openai_model, sanitized_cat)
+                    raise RuntimeError(f"All Gemini models failed, and OpenAI fallback failed with model '{resolved_openai_model}' ({sanitized_cat}).") from openai_err
+
+            return {
+                "stream": dynamic_stream_generator(),
+                "sources": context_chunks,
+                "search_query": search_query,
+                "model_used": active_model_id
+            }
+        else:
+            last_gemini_err = None
+            if client_genai and provider_is_available("google"):
                 for try_model in candidate_models:
+                    logger.info("Attempting primary provider Gemini with model '%s'", try_model)
                     try:
                         gen_config = types.GenerateContentConfig(
                             system_instruction=system_content,
@@ -1038,6 +1037,8 @@ Instructions:
                         response = chat.send_message(prompt)
                         record_model_usage(try_model)
                         content = response.text or ""
+                        if not content.strip():
+                            raise RuntimeError(f"Gemini model '{try_model}' returned an empty response")
                         cached_result = {
                             "answer": content,
                             "sources": context_chunks,
@@ -1049,78 +1050,57 @@ Instructions:
                     except Exception as e:
                         last_gemini_err = e
                         err_str = str(e)
+                        sanitized_cat = _sanitize_error_category(e)
                         if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                             mark_model_cooldown(try_model, err_str)
                         if _is_google_provider_wide_error(err_str):
                             mark_provider_cooldown("google", err_str)
-                        logger.warning(f"Gemini attempt with model '{try_model}' failed: {e}. Checking next candidate in pool...")
+                        logger.warning(
+                            "Gemini attempt with model '%s' failed (%s). Checking next candidate in pool...",
+                            try_model, sanitized_cat
+                        )
                         if not provider_is_available("google"):
+                            logger.warning("Google provider is cooling down. Stopping Gemini candidate search.")
                             break
                         continue
 
-                logger.warning(f"All Gemini models in pool failed (Last error: {last_gemini_err}). Falling back to Groq if available.")
-                if not resolved_groq_key and last_gemini_err:
-                    raise last_gemini_err
+            logger.warning("All Gemini candidate models failed. Checking OpenAI fallback.")
 
-        # 2. Attempt Fallback: Groq (Direct Groq SDK with active model)
-        if resolved_groq_key and provider_is_available("groq"):
-            groq_client = self.get_groq_client(resolved_groq_key)
+            # Fallback: OpenAI
+            if not resolved_openai_key:
+                logger.info("OpenAI fallback skipped: OPENAI_API_KEY is not configured.")
+                if last_gemini_err:
+                    raise RuntimeError(f"All Gemini models failed ({_sanitize_error_category(last_gemini_err)}). OpenAI fallback skipped because OPENAI_API_KEY is not configured.") from last_gemini_err
+                raise RuntimeError("All Gemini models failed. OpenAI fallback skipped because OPENAI_API_KEY is not configured.")
 
-            if stream:
-                def stream_generator_groq() -> Generator[str, None, None]:
-                    answer_parts: List[str] = []
-                    try:
-                        stream_resp = groq_client.chat.completions.create(
-                            model=groq_model,
-                            messages=groq_messages,
-                            max_tokens=min(max_tokens_to_use, 2048),
-                            temperature=0.3,
-                            stream=True,
-                        )
-                        for chunk in stream_resp:
-                            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                                content = chunk.choices[0].delta.content
-                                answer_parts.append(content)
-                                yield content
-                        if not answer_parts:
-                            raise RuntimeError("Groq returned an empty response")
-                        _store_cached_response(cache_key, {
-                            "answer": "".join(answer_parts),
-                            "sources": context_chunks,
-                            "search_query": search_query,
-                            "model_used": f"{groq_model} (Groq Fallback)",
-                        })
-                    except Exception as groq_err:
-                        mark_provider_cooldown("groq", str(groq_err))
-                        logger.error("Groq fallback stream failed: %s", groq_err)
-                        raise
-                return {
-                    "stream": stream_generator_groq(),
-                    "sources": context_chunks,
-                    "search_query": search_query,
-                    "model_used": f"{groq_model} (Groq Fallback)"
-                }
-            else:
-                try:
-                    resp = groq_client.chat.completions.create(
-                        model=groq_model,
-                        messages=groq_messages,
-                        max_tokens=min(max_tokens_to_use, 2048),
-                        temperature=0.3,
-                    )
-                except Exception as groq_err:
-                    mark_provider_cooldown("groq", str(groq_err))
-                    raise
+            if not provider_is_available("openai"):
+                logger.warning("OpenAI fallback skipped: OpenAI provider is cooling down.")
+                raise RuntimeError("All Gemini models failed. OpenAI fallback skipped because OpenAI provider is cooling down.")
+
+            logger.info("Attempting fallback provider OpenAI with model '%s'", resolved_openai_model)
+            try:
+                openai_client = self.get_openai_client(resolved_openai_key)
+                resp = openai_client.chat.completions.create(
+                    model=resolved_openai_model,
+                    messages=openai_messages,
+                    max_tokens=min(max_tokens_to_use, 2048),
+                    temperature=0.3,
+                )
                 content = resp.choices[0].message.content if resp.choices else ""
                 if not content or not content.strip():
-                    raise RuntimeError("Groq returned an empty response")
-                groq_result = {
+                    raise RuntimeError(f"OpenAI model '{resolved_openai_model}' returned an empty response")
+                openai_result = {
                     "answer": content,
                     "sources": context_chunks,
                     "search_query": search_query,
-                    "model_used": f"{groq_model} (Groq Fallback)"
+                    "model_used": f"{resolved_openai_model} (OpenAI Fallback)"
                 }
-                _store_cached_response(cache_key, groq_result)
-                return groq_result
-
-        raise ValueError("Neither GOOGLE_API_KEY nor GROQ_API_KEY is configured in the backend environment.")
+                _store_cached_response(cache_key, openai_result)
+                logger.info("OpenAI fallback succeeded with model '%s'", resolved_openai_model)
+                return openai_result
+            except Exception as openai_err:
+                sanitized_cat = _sanitize_error_category(openai_err)
+                mark_provider_cooldown("openai", str(openai_err))
+                mark_model_cooldown(resolved_openai_model, str(openai_err))
+                logger.error("OpenAI fallback failed with model '%s' (%s)", resolved_openai_model, sanitized_cat)
+                raise RuntimeError(f"All Gemini models failed, and OpenAI fallback failed with model '{resolved_openai_model}' ({sanitized_cat}).") from openai_err
