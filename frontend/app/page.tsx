@@ -16,7 +16,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
-  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { ChatInterface } from "@/components/chat/chat-interface";
@@ -31,7 +30,7 @@ const pathways = [
     badge: "15+ curated schemes",
     href: "/scholarships",
     icon: GraduationCap,
-    tone: "mint",
+    tone: "gold",
   },
   {
     id: "admissions",
@@ -49,7 +48,7 @@ const pathways = [
     badge: "26 institutions profiled",
     href: "/colleges",
     icon: Landmark,
-    tone: "gold",
+    tone: "slate",
   },
 ];
 
@@ -189,21 +188,8 @@ export default function Home() {
             <div className="hero-scrim-y absolute inset-0 pointer-events-none" />
           </div>
 
-          <div className="relative z-10 mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-20 lg:py-24">
+          <div className="relative z-10 mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28 lg:py-36">
             <Reveal className="max-w-3xl">
-              {/* Independent Unofficial Disclaimer Badge */}
-              <div className="mb-6 inline-flex flex-wrap items-center gap-2 rounded-full border border-amber-500/30 bg-[var(--bg-surface)]/90 px-3.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur-md">
-                <span className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400">
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                  Independent &amp; Unofficial
-                </span>
-                <span className="text-[var(--text-muted)]">·</span>
-                <span className="text-[var(--text-secondary)]">Not affiliated with the Government of J&amp;K</span>
-                <span className="rounded-full bg-[var(--brand)]/10 px-2.5 py-0.5 text-[11px] font-bold text-[var(--brand)]">
-                  Project by Shubh Sharma
-                </span>
-              </div>
-
               {/* Main Headline */}
               <h1 className="font-display text-4xl font-bold leading-[1.08] tracking-[-0.035em] sm:text-5xl lg:text-[3.9rem]">
                 Your education journey in J&amp;K, made{" "}
@@ -219,18 +205,14 @@ export default function Home() {
                 reservation frameworks—designed with low-bandwidth 2G resilience to keep opportunities accessible.
               </p>
 
-              {/* Primary Action Buttons */}
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              {/* Primary Action Buttons: Exactly one primary and one secondary */}
+              <div className="mt-10 flex flex-wrap items-center gap-4">
                 <Link href="/scholarships" className="button-primary">
-                  Find the right opportunity <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                  Explore scholarships <ArrowRight aria-hidden="true" className="h-4 w-4" />
                 </Link>
                 <a href="#advisor" className="button-secondary">
                   Ask EduSetu advisor
                 </a>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--bg-surface)]/80 px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] backdrop-blur-sm">
-                  <Zap aria-hidden="true" className="h-3.5 w-3.5 text-[var(--brand)]" />
-                  2G Edge &amp; Offline Ready
-                </span>
               </div>
 
               {/* Instant Prompt Chips */}
@@ -277,22 +259,22 @@ export default function Home() {
         <section className="relative z-20 mx-auto -mt-6 max-w-7xl px-5 sm:-mt-8 sm:px-8">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <div className="metric-card">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">Edge Engine</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-navy)]">Edge Engine</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">0.27 ms</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">2G ultra-lite lookup for low-connectivity border areas</p>
             </div>
             <div className="metric-card">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">Curated Corpus</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-slate)]">Curated Corpus</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">494+ Chunks</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">Indexed from public J&amp;K notices, circulars &amp; guidebooks</p>
             </div>
             <div className="metric-card">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)]">Policy Reference</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-gold)]">Policy Reference</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">S.O. 176</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">Indicative reference breakdown of J&amp;K reservation rules</p>
             </div>
             <div className="metric-card">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--brand)]">Directory</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-navy)]">Directory</span>
               <p className="mt-1 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">26 Colleges</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">NIT, GMCs, GCET, and UT universities profiled</p>
             </div>
@@ -308,7 +290,7 @@ export default function Home() {
                   <Icon aria-hidden="true" className="h-7 w-7" strokeWidth={1.8} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="inline-block rounded-full bg-[var(--bg-soft)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--brand)] mb-1">
+                  <span className="inline-block rounded-full bg-[var(--bg-soft)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)] mb-1">
                     {badge}
                   </span>
                   <span className="block font-display text-lg font-semibold leading-tight text-[var(--text-primary)]">
@@ -397,12 +379,24 @@ export default function Home() {
             <div className="grid gap-6 sm:grid-cols-3">
               {studentStages.map((stage, index) => {
                 const Icon = stage.icon;
+                const accentBadgeClass =
+                  index === 0
+                    ? "bg-amber-500/10 text-[var(--accent-gold)]"
+                    : index === 1
+                    ? "bg-blue-500/10 text-[var(--accent-navy)]"
+                    : "bg-slate-500/10 text-[var(--accent-slate)]";
+                const iconColorClass =
+                  index === 0
+                    ? "text-[var(--accent-gold)]"
+                    : index === 1
+                    ? "text-[var(--accent-navy)]"
+                    : "text-[var(--accent-slate)]";
                 return (
                   <Reveal key={stage.title} delay={index * 0.08}>
-                    <article className="product-panel flex h-full flex-col justify-between transition-all hover:border-[var(--brand)]/50 hover:shadow-md">
+                    <article className="product-panel flex h-full flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between gap-2 border-b border-[var(--line)] pb-4">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--brand)]">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${accentBadgeClass}`}>
                             <Icon aria-hidden="true" className="h-3.5 w-3.5" />
                             {stage.badge}
                           </span>
@@ -419,7 +413,7 @@ export default function Home() {
                         <ul className="mt-5 space-y-2 border-t border-[var(--line)]/60 pt-4">
                           {stage.highlights.map((item) => (
                             <li key={item} className="flex items-start gap-2 text-xs leading-5 text-[var(--text-secondary)]">
-                              <CheckCircle2 aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--brand)]" />
+                              <CheckCircle2 aria-hidden="true" className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${iconColorClass}`} />
                               <span>{item}</span>
                             </li>
                           ))}
@@ -464,7 +458,10 @@ export default function Home() {
             <Reveal delay={0.1}>
               <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                 {reservationCategories.map((item) => (
-                  <div key={item.label} className="flex flex-col justify-between rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-4 shadow-sm transition-all hover:border-[var(--brand)]/40">
+                  <div
+                    key={item.label}
+                    className="flex flex-col justify-between rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-5 shadow-[var(--shadow-card)] transition-all hover:border-[var(--brand)]/40 hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5"
+                  >
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <span className="block text-xs font-semibold text-[var(--text-muted)] leading-tight">{item.label}</span>
@@ -473,7 +470,7 @@ export default function Home() {
                             href={item.sourceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="shrink-0 inline-flex items-center gap-1 rounded bg-[var(--bg-soft)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--brand)] hover:underline"
+                            className="shrink-0 inline-flex items-center gap-1 rounded bg-[var(--bg-soft)] px-1.5 py-0.5 text-[10px] font-mono text-[var(--accent-navy)] hover:underline"
                             title={`Official source: ${item.gazetteRef}`}
                           >
                             <span>{item.gazetteRef}</span>
@@ -481,7 +478,7 @@ export default function Home() {
                           </a>
                         )}
                       </div>
-                      <span className="block font-display text-2xl font-bold text-[var(--brand)] mt-2 sm:text-3xl">{item.percentage}</span>
+                      <span className="block font-display text-2xl font-bold text-[var(--accent-navy)] mt-2 sm:text-3xl">{item.percentage}</span>
                       <p className="mt-1.5 text-xs leading-4 text-[var(--text-secondary)]">{item.desc}</p>
                     </div>
                   </div>
@@ -504,7 +501,7 @@ export default function Home() {
 
         {/* Institutions & Colleges Showcase */}
         <section id="colleges-and-seats" className="scroll-mt-24 px-5 py-16 sm:px-8 sm:py-20">
-          <Reveal className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)]">
+          <Reveal className="mx-auto max-w-7xl overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)]">
             <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
               <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">
                 <p className="eyebrow">Institutions Directory (Indicative)</p>
@@ -568,76 +565,76 @@ export default function Home() {
                   href="https://www.aicte-india.org/bureaus/jk"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="product-panel group flex flex-col justify-between transition-all hover:border-[var(--brand)] hover:shadow-md"
+                  className="product-panel group flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <GraduationCap className="h-6 w-6 text-[var(--brand)]" />
-                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--brand)] transition-colors" />
+                      <GraduationCap className="h-6 w-6 text-[var(--accent-gold)]" />
+                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--accent-gold)] transition-colors" />
                     </div>
                     <h3 className="font-display mt-4 text-lg font-bold text-[var(--text-primary)]">AICTE PMSSS</h3>
                     <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
                       Prime Minister’s Special Scholarship Scheme for J&amp;K students studying outside UT. Up to ₹3.0 Lakhs support.
                     </p>
                   </div>
-                  <span className="text-link mt-4 text-xs font-bold">Open AICTE portal →</span>
+                  <span className="text-link mt-4 text-xs font-bold text-[var(--accent-gold)]">Open AICTE portal →</span>
                 </a>
 
                 <a
                   href="https://www.jkbopee.gov.in"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="product-panel group flex flex-col justify-between transition-all hover:border-[var(--brand)] hover:shadow-md"
+                  className="product-panel group flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <FileText className="h-6 w-6 text-[var(--brand)]" />
-                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--brand)] transition-colors" />
+                      <FileText className="h-6 w-6 text-[var(--accent-navy)]" />
+                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--accent-navy)] transition-colors" />
                     </div>
                     <h3 className="font-display mt-4 text-lg font-bold text-[var(--text-primary)]">JKBOPEE Portal</h3>
                     <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
                       J&amp;K Board of Professional Entrance Examinations. Engineering, NEET AYUSH, and Paramedical counselling.
                     </p>
                   </div>
-                  <span className="text-link mt-4 text-xs font-bold">Open JKBOPEE portal →</span>
+                  <span className="text-link mt-4 text-xs font-bold text-[var(--accent-navy)]">Open JKBOPEE portal →</span>
                 </a>
 
                 <a
                   href="https://scholarships.gov.in"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="product-panel group flex flex-col justify-between transition-all hover:border-[var(--brand)] hover:shadow-md"
+                  className="product-panel group flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <Sparkles className="h-6 w-6 text-[var(--accent)]" />
-                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--brand)] transition-colors" />
+                      <Sparkles className="h-6 w-6 text-[var(--accent-gold)]" />
+                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--accent-gold)] transition-colors" />
                     </div>
                     <h3 className="font-display mt-4 text-lg font-bold text-[var(--text-primary)]">National Scholarship (NSP)</h3>
                     <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
                       Central government scholarship schemes, Post-Matric, CSSS, and merit-cum-means financial aid.
                     </p>
                   </div>
-                  <span className="text-link mt-4 text-xs font-bold">Open NSP portal →</span>
+                  <span className="text-link mt-4 text-xs font-bold text-[var(--accent-gold)]">Open NSP portal →</span>
                 </a>
 
                 <a
                   href="https://jkhighereducation.nic.in"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="product-panel group flex flex-col justify-between transition-all hover:border-[var(--brand)] hover:shadow-md"
+                  className="product-panel group flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <Building2 className="h-6 w-6 text-[var(--brand)]" />
-                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--brand)] transition-colors" />
+                      <Building2 className="h-6 w-6 text-[var(--accent-slate)]" />
+                      <ExternalLink className="h-4 w-4 text-[var(--text-muted)] group-hover:text-[var(--accent-slate)] transition-colors" />
                     </div>
                     <h3 className="font-display mt-4 text-lg font-bold text-[var(--text-primary)]">J&amp;K Higher Education Dept</h3>
                     <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
                       Official Government of J&amp;K Higher Education portal. Policy circulars, college list, and NEP guidelines.
                     </p>
                   </div>
-                  <span className="text-link mt-4 text-xs font-bold">Open Higher Ed portal →</span>
+                  <span className="text-link mt-4 text-xs font-bold text-[var(--accent-slate)]">Open Higher Ed portal →</span>
                 </a>
               </div>
             </Reveal>
@@ -649,8 +646,14 @@ export default function Home() {
       <footer id="resources" className="scroll-mt-24 border-t border-[var(--line)] bg-[var(--bg-surface)] px-5 py-12 sm:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-sm ring-1 ring-black/5">
-              <GraduationCap className="h-5 w-5 text-emerald-50" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-950 p-1 shadow-sm ring-1 ring-white/10 overflow-hidden">
+              <Image
+                src="/logo.png"
+                alt="J&K EduSetu Logo"
+                width={36}
+                height={48}
+                className="h-8 w-auto object-contain"
+              />
             </div>
             <div>
               <p className="font-display text-lg font-bold">J&amp;K EduSetu</p>

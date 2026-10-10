@@ -18,12 +18,18 @@
     --brand-button-hover: #135a3d;
     --accent: #c06d1a;
     --accent-soft: #faf0e0;
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
-    --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.06);
+    --accent-navy: #1e3a8a;
+    --accent-navy-soft: #eff6ff;
+    --accent-gold: #b45309;
+    --accent-gold-soft: #fffbeb;
+    --accent-slate: #334155;
+    --accent-slate-soft: #f1f5f9;
+    --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 14px -2px rgba(15, 23, 42, 0.04);
+    --shadow-elevated: 0 10px 25px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
     --shadow-glow: 0 0 0 1px rgba(26, 107, 74, 0.08);
-    --hero-scrim-left: rgba(248, 246, 241, 0.96);
-    --hero-scrim-mid: rgba(248, 246, 241, 0.88);
-    --hero-scrim-right: rgba(248, 246, 241, 0.32);
+    --hero-scrim-left: rgba(248, 246, 241, 0.88);
+    --hero-scrim-mid: rgba(248, 246, 241, 0.62);
+    --hero-scrim-right: rgba(248, 246, 241, 0.10);
     --hero-scrim-bottom: #f8f6f1;
   }
 
@@ -42,12 +48,18 @@
     --brand-button-hover: #369465;
     --accent: #e8a54e;
     --accent-soft: #2a2318;
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
-    --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.3);
+    --accent-navy: #60a5fa;
+    --accent-navy-soft: #172554;
+    --accent-gold: #fbbf24;
+    --accent-gold-soft: #451a03;
+    --accent-slate: #94a3b8;
+    --accent-slate-soft: #1e293b;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.35), 0 4px 14px -2px rgba(0, 0, 0, 0.25);
+    --shadow-elevated: 0 10px 25px -4px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.35);
     --shadow-glow: 0 0 0 1px rgba(92, 184, 138, 0.12);
-    --hero-scrim-left: rgba(13, 17, 23, 0.97);
-    --hero-scrim-mid: rgba(13, 17, 23, 0.90);
-    --hero-scrim-right: rgba(13, 17, 23, 0.38);
+    --hero-scrim-left: rgba(13, 17, 23, 0.90);
+    --hero-scrim-mid: rgba(13, 17, 23, 0.68);
+    --hero-scrim-right: rgba(13, 17, 23, 0.15);
     --hero-scrim-bottom: #0d1117;
   }
 
@@ -261,7 +273,7 @@
   align-items: center;
   gap: 1.15rem;
   border: 1px solid var(--line);
-  border-radius: 1.35rem;
+  border-radius: 1.25rem;
   background: var(--bg-surface);
   box-shadow: var(--shadow-card);
   padding: 1.35rem;
@@ -292,13 +304,18 @@
 }
 
 .pathway-icon-blue {
-  background: #e2ecf5;
-  color: #2c5a7f;
+  background: var(--accent-navy-soft);
+  color: var(--accent-navy);
 }
 
 .pathway-icon-gold {
-  background: #faecd5;
-  color: #9e5c12;
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold);
+}
+
+.pathway-icon-slate {
+  background: var(--accent-slate-soft);
+  color: var(--accent-slate);
 }
 
 .dark .pathway-icon-mint {
@@ -307,13 +324,18 @@
 }
 
 .dark .pathway-icon-blue {
-  background: #1a2535;
-  color: #6ba3d6;
+  background: var(--accent-navy-soft);
+  color: var(--accent-navy);
 }
 
 .dark .pathway-icon-gold {
-  background: #2a2318;
-  color: #e8a54e;
+  background: var(--accent-gold-soft);
+  color: var(--accent-gold);
+}
+
+.dark .pathway-icon-slate {
+  background: var(--accent-slate-soft);
+  color: var(--accent-slate);
 }
 
 .quick-link {
@@ -322,7 +344,7 @@
   align-items: center;
   gap: 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   background: var(--bg-surface);
   box-shadow: var(--shadow-card);
   padding: 0.85rem 1rem;
@@ -518,6 +540,15 @@
   border-radius: 1.25rem;
   background: var(--bg-surface);
   box-shadow: var(--shadow-card);
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.product-panel:hover,
+.catalog-card:hover,
+.checklist-step:hover {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--line));
+  box-shadow: var(--shadow-elevated);
+  transform: translateY(-2px);
 }
 
 .product-panel { padding: clamp(1.25rem, 3vw, 2rem); }

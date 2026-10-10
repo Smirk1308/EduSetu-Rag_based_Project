@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -54,21 +55,22 @@ export const FloatingNavbar = () => {
             href="/"
             className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-sm ring-1 ring-black/5">
-              <GraduationCap className="h-5 w-5 text-emerald-50" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-950 p-1 shadow-sm ring-1 ring-white/10 overflow-hidden">
+              <Image
+                src="/logo.png"
+                alt="J&K EduSetu Logo"
+                width={36}
+                height={48}
+                priority
+                className="h-8 w-auto object-contain"
+              />
             </div>
             <span className="min-w-0">
-              <span className="flex items-center gap-2">
-                <span className="font-display block whitespace-nowrap text-lg font-bold leading-tight tracking-tight sm:text-xl">
-                  J&amp;K EduSetu
-                </span>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-50/80 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  Independent &amp; Unofficial
-                </span>
+              <span className="font-display block whitespace-nowrap text-lg font-bold leading-tight tracking-tight sm:text-xl">
+                J&amp;K EduSetu
               </span>
-              <span className="hidden text-xs text-[var(--text-secondary)] sm:block">
-                Independent Student Advisory · J&amp;K
+              <span className="block text-xs text-[var(--text-secondary)]">
+                Independent student project
               </span>
             </span>
           </Link>
@@ -127,15 +129,21 @@ export const FloatingNavbar = () => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-sm ring-1 ring-black/5">
-              <GraduationCap className="h-5 w-5 text-emerald-50" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-950 p-1 shadow-sm ring-1 ring-white/10 overflow-hidden">
+              <Image
+                src="/logo.png"
+                alt="J&K EduSetu Logo"
+                width={32}
+                height={40}
+                className="h-8 w-auto object-contain"
+              />
             </div>
             <div>
               <span className="font-display block text-base font-bold text-[var(--text-primary)]">
                 J&amp;K EduSetu
               </span>
               <span className="block text-xs text-[var(--text-secondary)]">
-                Unofficial Student Guide
+                Independent student project
               </span>
             </div>
           </div>
