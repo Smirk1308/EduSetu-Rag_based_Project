@@ -14,6 +14,7 @@ import glob
 import time
 import hashlib
 import json
+from threading import RLock
 from typing import List, Dict, Any, Optional, Generator
 from pypdf import PdfReader
 import tiktoken
@@ -45,6 +46,9 @@ from model_router import (
     get_routed_model_info,
     GEMINI_FALLBACK_POOL,
     mark_model_cooldown,
+    mark_provider_cooldown,
+    model_is_available,
+    provider_is_available,
     record_model_usage,
 )
 
@@ -81,6 +85,78 @@ def is_followup(query: str, messages: list) -> bool:
 
 # In-memory query response cache to eliminate duplicate API consumption
 _RESPONSE_CACHE: Dict[str, Dict[str, Any]] = {}
+_RESPONSE_CACHE_LOCK = RLock()
+_RESPONSE_CACHE_TTL_SECONDS = 600
+_RESPONSE_CACHE_MAX_ENTRIES = 256
+
+
+def _response_cache_key(
+    query: str,
+    language: Optional[str],
+    context_chunks: List[Dict[str, Any]],
+    history: Optional[List[Dict[str, str]]],
+) -> Optional[str]:
+    """Cache only first-turn answers and bind them to the retrieved source text."""
+    query_terms = {term.strip(".,!?;:()[]{}\"'") for term in query.casefold().split()}
+    personal_terms = {"i", "i'm", "im", "me", "my", "mine", "we", "our", "ours"}
+    if history or len(query) > 500 or query_terms.intersection(personal_terms) or any(char.isdigit() for char in query):
+        return None
+
+    source_snapshot = [
+        {
+            "id": chunk.get("id"),
+            "source": chunk.get("source"),
+            "page": chunk.get("page"),
+            "text": chunk.get("text", ""),
+        }
+        for chunk in context_chunks
+    ]
+    material = json.dumps(
+        {
+            "query": query.strip().casefold(),
+            "language": language or "English",
+            "sources": source_snapshot,
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _get_cached_response(cache_key: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not cache_key:
+        return None
+    now = time.time()
+    with _RESPONSE_CACHE_LOCK:
+        cached = _RESPONSE_CACHE.get(cache_key)
+        if not cached:
+            return None
+        if cached.get("expires_at", 0) <= now:
+            _RESPONSE_CACHE.pop(cache_key, None)
+            return None
+        return dict(cached)
+
+
+def _store_cached_response(cache_key: Optional[str], response: Dict[str, Any]) -> None:
+    if not cache_key or not response.get("answer"):
+        return
+    now = time.time()
+    with _RESPONSE_CACHE_LOCK:
+        expired = [
+            key for key, value in _RESPONSE_CACHE.items()
+            if value.get("expires_at", 0) <= now
+        ]
+        for key in expired:
+            _RESPONSE_CACHE.pop(key, None)
+        while len(_RESPONSE_CACHE) >= _RESPONSE_CACHE_MAX_ENTRIES:
+            oldest_key = next(iter(_RESPONSE_CACHE), None)
+            if oldest_key is None:
+                break
+            _RESPONSE_CACHE.pop(oldest_key, None)
+        _RESPONSE_CACHE[cache_key] = {
+            **response,
+            "expires_at": now + _RESPONSE_CACHE_TTL_SECONDS,
+        }
 
 class LazySentenceTransformerEmbeddingFunction(EmbeddingFunction[Documents]):
     """ChromaDB-compatible lazy embedding function that delays sentence_transformers & torch loading until first retrieval."""
@@ -632,7 +708,7 @@ Instructions:
         language: Optional[str] = None,
         stream: bool = False
     ) -> Any:
-        """Retrieve context and generate answer via Gemini 3.5 Flash (primary) with Groq (fallback)."""
+        """Retrieve grounded context and route generation across Groq and Gemini."""
         # Resolve conversation history
         effective_history = history
         if effective_history is None:
@@ -681,15 +757,25 @@ Instructions:
             prompt = self.build_prompt(query, context_chunks, history_str=history_str)
             exchanges_to_keep = 3
 
-        # Check in-memory cache for exact identical query (0 API tokens, 0ms)
-        cache_key = f"{query.strip().lower()}__{len(effective_history)}"
-        if not stream and cache_key in _RESPONSE_CACHE:
-            cached = _RESPONSE_CACHE[cache_key]
-            return {
+        # Reuse source-bound first-turn answers briefly; do not cache personal follow-ups.
+        cache_key = _response_cache_key(query, language, context_chunks, effective_history)
+        cached = _get_cached_response(cache_key)
+        if cached:
+            cached_result = {
                 "answer": cached["answer"],
                 "sources": cached["sources"],
                 "search_query": cached.get("search_query", search_query),
-                "model_used": f"{cached['model_used']} (⚡ Cached)"
+                "model_used": f"{cached['model_used']} (Cached)",
+            }
+            if not stream:
+                return cached_result
+
+            def cached_stream_generator() -> Generator[str, None, None]:
+                yield cached_result["answer"]
+
+            return {
+                **cached_result,
+                "stream": cached_stream_generator(),
             }
 
         # Determine history length and route LLM using model_router
@@ -728,9 +814,85 @@ Instructions:
         if model and not any(p in model.lower() for p in ["gemini", "gpt", "claude"]) and not any(d in model for d in ["llama3-8b-8192", "llama3-70b-8192"]):
             groq_model = model
 
+        # Use Groq's independent quota for everyday questions; preserve Gemini for
+        # complex questions and as a fallback when the preferred provider is limited.
+        if active_tier in {"simple", "medium"} and resolved_groq_key and provider_is_available("groq"):
+            try:
+                groq_client = self.get_groq_client(resolved_groq_key)
+                if stream:
+                    stream_response = groq_client.chat.completions.create(
+                        model=groq_model,
+                        messages=groq_messages,
+                        max_tokens=min(max_tokens_to_use, 2048),
+                        temperature=0.3,
+                        stream=True,
+                    )
+                    stream_iterator = iter(stream_response)
+                    first_chunk = next(stream_iterator, None)
+
+                    def groq_primary_stream() -> Generator[str, None, None]:
+                        answer_parts: List[str] = []
+                        chunks = [first_chunk] if first_chunk is not None else []
+                        try:
+                            for chunk in chunks:
+                                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                                    content = chunk.choices[0].delta.content
+                                    answer_parts.append(content)
+                                    yield content
+                            for chunk in stream_iterator:
+                                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                                    content = chunk.choices[0].delta.content
+                                    answer_parts.append(content)
+                                    yield content
+                            _store_cached_response(cache_key, {
+                                "answer": "".join(answer_parts),
+                                "sources": context_chunks,
+                                "search_query": search_query,
+                                "model_used": f"{groq_model} (Groq)",
+                            })
+                        except Exception as groq_stream_error:
+                            mark_provider_cooldown("groq", str(groq_stream_error))
+                            logger.warning("Groq primary stream interrupted: %s", groq_stream_error)
+                            raise
+
+                    return {
+                        "stream": groq_primary_stream(),
+                        "sources": context_chunks,
+                        "search_query": search_query,
+                        "model_used": f"{groq_model} (Groq)",
+                    }
+
+                response = groq_client.chat.completions.create(
+                    model=groq_model,
+                    messages=groq_messages,
+                    max_tokens=min(max_tokens_to_use, 2048),
+                    temperature=0.3,
+                )
+                content = response.choices[0].message.content if response.choices else ""
+                if not content or not content.strip():
+                    raise RuntimeError("Groq returned an empty response")
+                groq_result = {
+                    "answer": content or "",
+                    "sources": context_chunks,
+                    "search_query": search_query,
+                    "model_used": f"{groq_model} (Groq)",
+                }
+                _store_cached_response(cache_key, groq_result)
+                return groq_result
+            except Exception as groq_error:
+                mark_provider_cooldown("groq", str(groq_error))
+                logger.warning("Groq primary attempt failed; trying Gemini if available: %s", groq_error)
+
         # 1. Attempt Primary: Gemini via Google GenAI SDK (Sub-second TTFT, multilingual)
-        if resolved_google_key:
-            client_genai = self.get_genai_client(resolved_google_key)
+        client_genai = None
+        if resolved_google_key and provider_is_available("google"):
+            try:
+                client_genai = self.get_genai_client(resolved_google_key)
+            except Exception as google_error:
+                mark_provider_cooldown("google", str(google_error))
+                logger.warning("Gemini client initialization failed: %s", google_error)
+
+        if client_genai:
 
             # Format conversation history for google.genai chat
             genai_history = []
@@ -748,10 +910,12 @@ Instructions:
             for cm in GEMINI_FALLBACK_POOL:
                 if cm not in candidate_models:
                     candidate_models.append(cm)
+            candidate_models = [candidate for candidate in candidate_models if model_is_available(candidate)]
 
             if stream:
                 def dynamic_stream_generator() -> Generator[str, None, None]:
                     gemini_streamed_any = False
+                    answer_parts: List[str] = []
                     for try_model in candidate_models:
                         try:
                             gen_config = types.GenerateContentConfig(
@@ -774,24 +938,38 @@ Instructions:
 
                             if first_chunk and first_chunk.text:
                                 gemini_streamed_any = True
+                                answer_parts.append(first_chunk.text)
                                 yield first_chunk.text
 
                             for chunk in stream_iter:
                                 if chunk.text:
                                     gemini_streamed_any = True
+                                    answer_parts.append(chunk.text)
                                     yield chunk.text
+                            if not gemini_streamed_any:
+                                raise RuntimeError(f"Gemini model '{try_model}' returned an empty response")
+                            _store_cached_response(cache_key, {
+                                "answer": "".join(answer_parts),
+                                "sources": context_chunks,
+                                "search_query": search_query,
+                                "model_used": try_model,
+                            })
                             return
                         except Exception as try_err:
                             err_str = str(try_err)
                             if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                                 mark_model_cooldown(try_model, err_str)
+                            if any(code in err_str.lower() for code in ["429", "resource_exhausted", "rate limit", "quota", "503", "unavailable"]):
+                                mark_provider_cooldown("google", err_str)
                             logger.warning(f"Gemini streaming attempt on '{try_model}' failed: {try_err}. Checking next candidate in pool...")
                             if gemini_streamed_any:
-                                return
+                                raise
+                            if not provider_is_available("google"):
+                                break
                             continue
 
                     # If all Gemini models in candidate_models failed, try Groq fallback
-                    if resolved_groq_key:
+                    if resolved_groq_key and provider_is_available("groq"):
                         logger.warning("All Gemini candidate models failed. Falling back to Groq stream...")
                         try:
                             groq_client = self.get_groq_client(resolved_groq_key)
@@ -804,9 +982,18 @@ Instructions:
                             )
                             for chunk in stream_resp:
                                 if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                                    yield chunk.choices[0].delta.content
+                                    content = chunk.choices[0].delta.content
+                                    answer_parts.append(content)
+                                    yield content
+                            _store_cached_response(cache_key, {
+                                "answer": "".join(answer_parts),
+                                "sources": context_chunks,
+                                "search_query": search_query,
+                                "model_used": f"{groq_model} (Groq Fallback)",
+                            })
                             return
                         except Exception as groq_err:
+                            mark_provider_cooldown("groq", str(groq_err))
                             logger.error(f"Groq stream fallback also failed: {groq_err}")
                             raise groq_err
 
@@ -838,24 +1025,24 @@ Instructions:
                         response = chat.send_message(prompt)
                         record_model_usage(try_model)
                         content = response.text or ""
-                        _RESPONSE_CACHE[cache_key] = {
+                        cached_result = {
                             "answer": content,
                             "sources": context_chunks,
                             "search_query": search_query,
                             "model_used": try_model
                         }
-                        return {
-                            "answer": content,
-                            "sources": context_chunks,
-                            "search_query": search_query,
-                            "model_used": try_model
-                        }
+                        _store_cached_response(cache_key, cached_result)
+                        return cached_result
                     except Exception as e:
                         last_gemini_err = e
                         err_str = str(e)
                         if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                             mark_model_cooldown(try_model, err_str)
+                        if any(code in err_str.lower() for code in ["429", "resource_exhausted", "rate limit", "quota", "503", "unavailable"]):
+                            mark_provider_cooldown("google", err_str)
                         logger.warning(f"Gemini attempt with model '{try_model}' failed: {e}. Checking next candidate in pool...")
+                        if not provider_is_available("google"):
+                            break
                         continue
 
                 logger.warning(f"All Gemini models in pool failed (Last error: {last_gemini_err}). Falling back to Groq if available.")
@@ -863,21 +1050,35 @@ Instructions:
                     raise last_gemini_err
 
         # 2. Attempt Fallback: Groq (Direct Groq SDK with active model)
-        if resolved_groq_key:
+        if resolved_groq_key and provider_is_available("groq"):
             groq_client = self.get_groq_client(resolved_groq_key)
 
             if stream:
-                stream_resp = groq_client.chat.completions.create(
-                    model=groq_model,
-                    messages=groq_messages,
-                    max_tokens=2048,
-                    temperature=0.3,
-                    stream=True
-                )
                 def stream_generator_groq() -> Generator[str, None, None]:
-                    for chunk in stream_resp:
-                        if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                            yield chunk.choices[0].delta.content
+                    answer_parts: List[str] = []
+                    try:
+                        stream_resp = groq_client.chat.completions.create(
+                            model=groq_model,
+                            messages=groq_messages,
+                            max_tokens=min(max_tokens_to_use, 2048),
+                            temperature=0.3,
+                            stream=True,
+                        )
+                        for chunk in stream_resp:
+                            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                                content = chunk.choices[0].delta.content
+                                answer_parts.append(content)
+                                yield content
+                        _store_cached_response(cache_key, {
+                            "answer": "".join(answer_parts),
+                            "sources": context_chunks,
+                            "search_query": search_query,
+                            "model_used": f"{groq_model} (Groq Fallback)",
+                        })
+                    except Exception as groq_err:
+                        mark_provider_cooldown("groq", str(groq_err))
+                        logger.error("Groq fallback stream failed: %s", groq_err)
+                        raise
                 return {
                     "stream": stream_generator_groq(),
                     "sources": context_chunks,
@@ -885,20 +1086,26 @@ Instructions:
                     "model_used": f"{groq_model} (Groq Fallback)"
                 }
             else:
-                resp = groq_client.chat.completions.create(
-                    model=groq_model,
-                    messages=groq_messages,
-                    max_tokens=2048,
-                    temperature=0.3
-                )
+                try:
+                    resp = groq_client.chat.completions.create(
+                        model=groq_model,
+                        messages=groq_messages,
+                        max_tokens=min(max_tokens_to_use, 2048),
+                        temperature=0.3,
+                    )
+                except Exception as groq_err:
+                    mark_provider_cooldown("groq", str(groq_err))
+                    raise
                 content = resp.choices[0].message.content if resp.choices else ""
-                return {
+                if not content or not content.strip():
+                    raise RuntimeError("Groq returned an empty response")
+                groq_result = {
                     "answer": content,
                     "sources": context_chunks,
                     "search_query": search_query,
                     "model_used": f"{groq_model} (Groq Fallback)"
                 }
+                _store_cached_response(cache_key, groq_result)
+                return groq_result
 
         raise ValueError("Neither GOOGLE_API_KEY nor GROQ_API_KEY is configured in the backend environment.")
-
-

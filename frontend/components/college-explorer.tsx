@@ -10,6 +10,7 @@ import {
   GraduationCap,
   MapPin,
   Search,
+  ShieldAlert,
   SlidersHorizontal,
 } from "lucide-react";
 import type { College } from "@/data/colleges";
@@ -127,17 +128,28 @@ export function CollegeExplorer() {
     <div className="space-y-8">
       <section className="product-hero">
         <div>
-          <p className="eyebrow">College & course explorer</p>
+          <p className="eyebrow">College &amp; course explorer</p>
           <h1 className="font-display mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
             Compare options before you commit.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
-            Search the verified J&amp;K catalogue by course, college, district, type, and reservation category.
-            Confirm fees, seats, and cut-offs in the latest official notice.
+            Search the indicative J&amp;K college directory by course, college, district, type, and seat category.
+            All cut-offs, seat numbers, and fees are indicative reference estimates; confirm current rules in the official JKBOPEE notice.
           </p>
         </div>
         <Building2 aria-hidden="true" className="product-hero-icon" />
       </section>
+
+      {/* Indicative Notice Banner */}
+      <div className="rounded-xl border border-amber-500/25 bg-amber-50/70 dark:bg-amber-950/30 p-4 text-xs text-amber-900 dark:text-amber-200">
+        <p className="font-semibold flex items-center gap-1.5">
+          <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          Indicative Directory Only · Unofficial Guide · Last Updated: Academic Session 2024–25
+        </p>
+        <p className="mt-1 text-[var(--text-secondary)] leading-5">
+          Seat distributions, fee structures, and entry cutoff ranks shown below are indicative reference estimates compiled from historical BOPEE bulletins, JoSAA allocation records, and college brochures. Exact seat matrices and fee notifications change annually. Always verify current details on the official <a href="https://jkbopee.gov.in" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-[var(--brand)] hover:underline">JKBOPEE portal</a> or the institution&apos;s website.
+        </p>
+      </div>
 
       <section className="product-panel">
         <div className="mb-5 flex items-center gap-3">
@@ -273,7 +285,7 @@ function CollegeCard({ item }: { item: College }) {
           <dd>{item.admission_through || "Merit / BOPEE"}</dd>
         </div>
         <div>
-          <dt>Fees / Sem</dt>
+          <dt>Indicative Fee</dt>
           <dd>{item.fees_per_sem || "Check notice"}</dd>
         </div>
         <div>
@@ -323,7 +335,7 @@ function CollegeCard({ item }: { item: College }) {
               {branch.cutoff_info && (
                 <p className="mt-1.5 flex items-center gap-1 text-xs text-[var(--text-muted)]">
                   <GraduationCap aria-hidden="true" className="h-3 w-3 shrink-0 text-[var(--accent)]" />
-                  <span>Cut-off: {branch.cutoff_info}</span>
+                  <span>Indicative entry / cut-off: {branch.cutoff_info}</span>
                 </p>
               )}
             </li>

@@ -170,6 +170,7 @@ def _runtime_state():
             _API_STATE.setdefault("active_model_id", "gemini-3.5-flash-lite")
             _API_STATE.setdefault("exhausted_models", set())
             _API_STATE.setdefault("model_cooldowns", {})
+            _API_STATE.setdefault("provider_cooldowns", {})
     return _API_STATE
 
 
@@ -230,6 +231,7 @@ def _init_usage():
         state.setdefault("active_model_id", "gemini-3.5-flash-lite")
         state.setdefault("exhausted_models", set())
         state.setdefault("model_cooldowns", {})
+        state.setdefault("provider_cooldowns", {})
 
 
 def _clear_expired_cooldowns(now: float | None = None) -> None:
@@ -242,6 +244,41 @@ def _clear_expired_cooldowns(now: float | None = None) -> None:
         state["model_cooldowns"] = active
         # Kept as a compatibility view for existing UI and callers.
         state["exhausted_models"] = set(active)
+        provider_cooldowns = state.get("provider_cooldowns", {})
+        state["provider_cooldowns"] = {
+            provider: expiry
+            for provider, expiry in provider_cooldowns.items()
+            if expiry > now
+        }
+
+
+def model_is_available(model_id: str, now: float | None = None) -> bool:
+    """Return False while a model is in its provider-error cooldown window."""
+    _init_usage()
+    _clear_expired_cooldowns(now)
+    state = _runtime_state()
+    with _ROUTER_LOCK:
+        return model_id not in state.get("model_cooldowns", {})
+
+
+def provider_is_available(provider: str, now: float | None = None) -> bool:
+    """Return False while a provider is cooling down after quota or service errors."""
+    _init_usage()
+    _clear_expired_cooldowns(now)
+    state = _runtime_state()
+    with _ROUTER_LOCK:
+        return provider not in state.get("provider_cooldowns", {})
+
+
+def _retry_seconds(error_text: str, default_seconds: int, maximum: int = 3600) -> int:
+    lowered = error_text.lower()
+    match = re.search(
+        r"(?:retry(?:[\s_]*after|[\s_]*in)?|retry[\s_]*delay[^\d]*)\s*(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?",
+        lowered,
+    )
+    if not match:
+        return default_seconds
+    return int(min(max(float(match.group(1)), 15), maximum))
 
 
 def record_model_usage(model_id: str, tier: str | None = None) -> None:
@@ -265,9 +302,7 @@ def mark_model_cooldown(model_id: str, error_text: str, now: float | None = None
     lowered = error_text.lower()
     # A missing model is unlikely to recover immediately; rate limits should.
     default_seconds = 3600 if ("404" in lowered or "not_found" in lowered) else 60
-    match = re.search(r"(?:retry(?:\s+after|\s+in)?|retry_delay[^\d]*)\s*(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?", lowered)
-    retry_seconds = float(match.group(1)) if match else default_seconds
-    retry_seconds = min(max(retry_seconds, 15), 3600)
+    retry_seconds = _retry_seconds(error_text, default_seconds)
     current_time = time.time() if now is None else now
     state = _runtime_state()
     with _ROUTER_LOCK:
@@ -275,6 +310,33 @@ def mark_model_cooldown(model_id: str, error_text: str, now: float | None = None
         cooldowns[model_id] = current_time + retry_seconds
         state["model_cooldowns"] = cooldowns
     _clear_expired_cooldowns(current_time)
+
+
+def mark_provider_cooldown(provider: str, error_text: str, now: float | None = None) -> None:
+    """Pause a provider after quota or service errors to avoid wasting its shared quota."""
+    if provider not in {"google", "groq"}:
+        return
+
+    lowered = error_text.lower()
+    if any(token in lowered for token in ("429", "resource_exhausted", "rate limit", "quota")):
+        default_seconds = 3600 if any(token in lowered for token in ("per day", "per-day", "rpd", "daily quota")) else 60
+    elif any(token in lowered for token in ("503", "unavailable", "502", "500", "timeout")):
+        default_seconds = 30
+    elif any(token in lowered for token in ("401", "403", "unauthorized", "forbidden")):
+        default_seconds = 300
+    elif any(token in lowered for token in ("404", "not_found", "model not found")):
+        default_seconds = 3600
+    else:
+        return
+
+    retry_seconds = _retry_seconds(error_text, default_seconds)
+    current_time = time.time() if now is None else now
+    _init_usage()
+    state = _runtime_state()
+    with _ROUTER_LOCK:
+        cooldowns = dict(state.get("provider_cooldowns", {}))
+        cooldowns[provider] = current_time + retry_seconds
+        state["provider_cooldowns"] = cooldowns
 
 
 def get_routed_model_info(query: str = "", history_length: int = 0, language: str | None = None) -> dict:

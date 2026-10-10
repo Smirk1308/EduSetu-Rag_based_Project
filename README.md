@@ -1,11 +1,7 @@
 # J&K EduSetu — Autonomous AI Higher Education & Scholarship Advisor
-### Official AI Advisor for Jammu, Kashmir & Ladakh • Next.js + FastAPI + PostgreSQL/pgvector
+### Independent AI Advisor for Jammu, Kashmir & Ladakh • Next.js + FastAPI + PostgreSQL/pgvector
 
-<p align="center">
-  <img src="frontend/public/jk_emblem.png" width="100" alt="J&K State Emblem" />
-</p>
-
-An enterprise-grade, decoupled AI advisor grounded directly on verified government gazettes, AICTE PMSSS guidelines, JKBOPEE seat matrices, and the updated **S.O. 176 (2024)** reservation rules. 
+An educational AI guidance platform grounded on public government notices, AICTE PMSSS guidelines, JKBOPEE seat matrices, and the indicative **S.O. 176 (2024)** reservation framework. 
 
 Built with **Next.js (React 19)**, **Tailwind CSS**, and **Framer Motion**, paired with a **FastAPI** backend and a managed **PostgreSQL/pgvector** knowledge store. Local ChromaDB remains available only for database-free development.
 
@@ -35,7 +31,7 @@ Built with **Next.js (React 19)**, **Tailwind CSS**, and **Framer Motion**, pair
 │                      Storage & Retrieval                    │
 │         Supabase PostgreSQL + pgvector (production)           │
 │             ChromaDB (local development only)                 │
-│              Verified Official Gazette Documents            │
+│              Public Documents & Circulars Corpus            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -47,12 +43,12 @@ Built with **Next.js (React 19)**, **Tailwind CSS**, and **Framer Motion**, pair
 - **Aceternity UI & 21st.dev Components**:
   - **Spotlight**: Radial cursor hero spotlight gradient.
   - **Background Beams / Sparkles**: Ambient floating particles inspired by Himalayan tranquility.
-  - **Floating Navbar**: Frosted glass pill header with official J&K Emblem, active fleet badge, and 2G switch.
+  - **Floating Navbar**: Frosted glass header with educational brand mark, active fleet badge, and 2G switch.
   - **Bento Grid**: Asymmetric responsive cards for Colleges, PMSSS, and S.O. 176 Quotas.
-- **Verified Government Grounding**:
+- **Public Document Grounding**:
   - AICTE PMSSS (5,000 reserved slots annually, up to ₹3.00L tuition + ₹1.00L maintenance).
-  - BOPEE & JEE Main opening/closing cutoffs (NIT Srinagar, GCET Jammu, GMC Srinagar).
-  - S.O. 176 (2024) Updated Reservation Policy (OM 50%, ST 20%, RBA 10%, SC 8%, EWS 10%).
+  - BOPEE & JEE Main indicative cutoffs (NIT Srinagar, GCET Jammu, GMC Srinagar).
+  - S.O. 176 (2024) Reservation Framework (Indicative OM ~40%–50%, ST 20% [ST-1 10% + ST-2 10%], RBA 10%, OBC 8%, SC 8%, EWS 10%).
 - **Quota-Aware 5-Model Gemini Fleet**:
   - `gemini-3.8-flash`: Deep reasoning & flagship queries.
   - `gemini-3.6-flash`: High-fidelity standard queries.
@@ -144,3 +140,8 @@ Re-indexing replaces the document corpus atomically; keep a database backup and 
 
 ## 🌐 Live Demo
 **[jkedusetu.app](https://jkedusetu.app)**
+
+---
+
+## ⚠️ Disclaimer
+**J&K EduSetu is an independent, unofficial educational guidance platform created by Shubh Sharma. It is not affiliated with, endorsed by, or representing the Government of Jammu & Kashmir, the Higher Education Department, JKBOPEE, AICTE, or any official examination board.** All seat figures, cut-offs, fee amounts, and quota statistics are indicative guidelines compiled from public documents for informational purposes. Always consult the official websites (e.g., [jkbopee.gov.in](https://jkbopee.gov.in) and [aicte-india.org](https://www.aicte-india.org/bureaus/jk)) for authoritative notices and rules.
