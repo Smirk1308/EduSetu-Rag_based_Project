@@ -55,14 +55,14 @@ export const FloatingNavbar = () => {
             href="/"
             className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
           >
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-950 p-1 shadow-sm ring-1 ring-white/10 overflow-hidden">
+            <div className="relative flex h-10 w-auto shrink-0 items-center justify-center">
               <Image
                 src="/logo.png"
                 alt="J&K EduSetu Logo"
                 width={36}
                 height={48}
                 priority
-                className="h-8 w-auto object-contain"
+                className="h-9 w-auto object-contain"
               />
             </div>
             <span className="min-w-0">
@@ -129,13 +129,13 @@ export const FloatingNavbar = () => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-950 p-1 shadow-sm ring-1 ring-white/10 overflow-hidden">
+            <div className="relative flex h-10 w-auto shrink-0 items-center justify-center">
               <Image
                 src="/logo.png"
                 alt="J&K EduSetu Logo"
                 width={32}
-                height={40}
-                className="h-8 w-auto object-contain"
+                height={42}
+                className="h-9 w-auto object-contain"
               />
             </div>
             <div>

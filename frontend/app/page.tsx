@@ -646,13 +646,13 @@ export default function Home() {
       <footer id="resources" className="scroll-mt-24 border-t border-[var(--line)] bg-[var(--bg-surface)] px-5 py-12 sm:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-900 dark:bg-neutral-950 p-1 shadow-sm ring-1 ring-white/10 overflow-hidden">
+            <div className="relative flex h-10 w-auto shrink-0 items-center justify-center">
               <Image
                 src="/logo.png"
                 alt="J&K EduSetu Logo"
                 width={36}
                 height={48}
-                className="h-8 w-auto object-contain"
+                className="h-9 w-auto object-contain"
               />
             </div>
             <div>
