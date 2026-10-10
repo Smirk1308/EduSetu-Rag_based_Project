@@ -183,6 +183,11 @@ class TestModelRouterFleet(unittest.TestCase):
         mark_provider_cooldown("google", "404 model not found", now=1000)
         self.assertTrue(provider_is_available("google", now=1000))
 
+    def test_12_openai_provider_cooldown_honors_retry_hints(self):
+        mark_provider_cooldown("openai", "429: rate limit, retry after 30 seconds", now=1000)
+        self.assertFalse(provider_is_available("openai", now=1010))
+        self.assertTrue(provider_is_available("openai", now=1031))
+
 
 if __name__ == "__main__":
     unittest.main()
