@@ -844,6 +844,8 @@ Instructions:
                                     content = chunk.choices[0].delta.content
                                     answer_parts.append(content)
                                     yield content
+                            if not answer_parts:
+                                raise RuntimeError("Groq returned an empty response")
                             _store_cached_response(cache_key, {
                                 "answer": "".join(answer_parts),
                                 "sources": context_chunks,
@@ -959,8 +961,7 @@ Instructions:
                             err_str = str(try_err)
                             if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                                 mark_model_cooldown(try_model, err_str)
-                            if any(code in err_str.lower() for code in ["429", "resource_exhausted", "rate limit", "quota", "503", "unavailable"]):
-                                mark_provider_cooldown("google", err_str)
+                            mark_provider_cooldown("google", err_str)
                             logger.warning(f"Gemini streaming attempt on '{try_model}' failed: {try_err}. Checking next candidate in pool...")
                             if gemini_streamed_any:
                                 raise
@@ -985,6 +986,8 @@ Instructions:
                                     content = chunk.choices[0].delta.content
                                     answer_parts.append(content)
                                     yield content
+                            if not answer_parts:
+                                raise RuntimeError("Groq returned an empty response")
                             _store_cached_response(cache_key, {
                                 "answer": "".join(answer_parts),
                                 "sources": context_chunks,
@@ -1038,8 +1041,7 @@ Instructions:
                         err_str = str(e)
                         if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                             mark_model_cooldown(try_model, err_str)
-                        if any(code in err_str.lower() for code in ["429", "resource_exhausted", "rate limit", "quota", "503", "unavailable"]):
-                            mark_provider_cooldown("google", err_str)
+                        mark_provider_cooldown("google", err_str)
                         logger.warning(f"Gemini attempt with model '{try_model}' failed: {e}. Checking next candidate in pool...")
                         if not provider_is_available("google"):
                             break
@@ -1069,6 +1071,8 @@ Instructions:
                                 content = chunk.choices[0].delta.content
                                 answer_parts.append(content)
                                 yield content
+                        if not answer_parts:
+                            raise RuntimeError("Groq returned an empty response")
                         _store_cached_response(cache_key, {
                             "answer": "".join(answer_parts),
                             "sources": context_chunks,

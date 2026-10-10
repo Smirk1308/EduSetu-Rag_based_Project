@@ -319,13 +319,11 @@ def mark_provider_cooldown(provider: str, error_text: str, now: float | None = N
 
     lowered = error_text.lower()
     if any(token in lowered for token in ("429", "resource_exhausted", "rate limit", "quota")):
-        default_seconds = 3600 if any(token in lowered for token in ("per day", "per-day", "rpd", "daily quota")) else 60
+        default_seconds = 3600 if any(token in lowered for token in ("per day", "per-day", "per_day", "perday", "rpd", "daily quota")) else 60
     elif any(token in lowered for token in ("503", "unavailable", "502", "500", "timeout")):
         default_seconds = 30
     elif any(token in lowered for token in ("401", "403", "unauthorized", "forbidden")):
         default_seconds = 300
-    elif any(token in lowered for token in ("404", "not_found", "model not found")):
-        default_seconds = 3600
     else:
         return
 
