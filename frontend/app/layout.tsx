@@ -13,7 +13,11 @@ export const metadata: Metadata = {
   description:
     "Explore scholarship guidance, admission information, colleges, and seat details for students in Jammu & Kashmir. An independent education guidance project by Shubh Sharma.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+    apple: "/brand/edusetu-mark.svg",
   },
 };
 

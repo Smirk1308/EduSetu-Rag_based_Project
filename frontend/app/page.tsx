@@ -645,20 +645,24 @@ export default function Home() {
       {/* Footer */}
       <footer id="resources" className="scroll-mt-24 border-t border-[var(--line)] bg-[var(--bg-surface)] px-5 py-12 sm:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-auto shrink-0 items-center justify-center">
+          <div className="flex flex-col gap-2">
+            <div className="relative flex h-10 w-auto shrink-0 items-center">
               <Image
-                src="/logo.png"
-                alt="J&K EduSetu Logo"
-                width={36}
-                height={48}
-                className="h-9 w-auto object-contain"
+                src="/brand/edusetu-logo-horizontal.svg"
+                alt="J&K EduSetu"
+                width={184}
+                height={40}
+                className="h-9 w-auto object-contain dark:hidden"
+              />
+              <Image
+                src="/brand/edusetu-logo-horizontal-dark.svg"
+                alt="J&K EduSetu"
+                width={184}
+                height={40}
+                className="h-9 w-auto object-contain hidden dark:block"
               />
             </div>
-            <div>
-              <p className="font-display text-lg font-bold">J&amp;K EduSetu</p>
-              <p className="text-sm text-[var(--text-secondary)]">Independent Student Guidance Resource for J&amp;K · Developed by Shubh Sharma</p>
-            </div>
+            <p className="text-sm text-[var(--text-secondary)]">Independent Student Guidance Resource for J&amp;K · Developed by Shubh Sharma</p>
           </div>
           <nav aria-label="Official resources" className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--text-secondary)]">
             <a className="footer-link" href="https://www.aicte-india.org/bureaus/jk" target="_blank" rel="noopener noreferrer">AICTE PMSSS Portal</a>

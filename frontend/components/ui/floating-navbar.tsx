@@ -53,26 +53,63 @@ export const FloatingNavbar = () => {
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
           <Link
             href="/"
-            className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            className="flex min-w-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+            aria-label="J&K EduSetu Home - Independent student project"
           >
-            <div className="relative flex h-10 w-auto shrink-0 items-center justify-center">
-              <Image
-                src="/logo.png"
-                alt="J&K EduSetu Logo"
-                width={36}
-                height={48}
-                priority
-                className="h-9 w-auto object-contain"
-              />
-            </div>
-            <span className="min-w-0">
-              <span className="font-display block whitespace-nowrap text-lg font-bold leading-tight tracking-tight sm:text-xl">
-                J&amp;K EduSetu
-              </span>
-              <span className="block text-xs text-[var(--text-secondary)]">
+            {/* Desktop Navbar: Horizontal SVG Lockup */}
+            <div className="hidden sm:flex flex-col justify-center">
+              <div className="relative flex h-9 w-auto shrink-0 items-center">
+                <Image
+                  src="/brand/edusetu-logo-horizontal.svg"
+                  alt="J&K EduSetu"
+                  width={184}
+                  height={40}
+                  priority
+                  className="h-9 w-auto object-contain dark:hidden"
+                />
+                <Image
+                  src="/brand/edusetu-logo-horizontal-dark.svg"
+                  alt="J&K EduSetu"
+                  width={184}
+                  height={40}
+                  priority
+                  className="h-9 w-auto object-contain hidden dark:block"
+                />
+              </div>
+              <span className="block text-[11px] text-[var(--text-secondary)] leading-none mt-0.5">
                 Independent student project
               </span>
-            </span>
+            </div>
+
+            {/* Mobile Navbar: Symbol-only mark with accessible product name text */}
+            <div className="flex sm:hidden items-center gap-2.5">
+              <div className="relative flex h-9 w-auto shrink-0 items-center justify-center">
+                <Image
+                  src="/brand/edusetu-mark.svg"
+                  alt="J&K EduSetu"
+                  width={40}
+                  height={36}
+                  priority
+                  className="h-8 w-auto object-contain dark:hidden"
+                />
+                <Image
+                  src="/brand/edusetu-mark-dark.svg"
+                  alt="J&K EduSetu"
+                  width={40}
+                  height={36}
+                  priority
+                  className="h-8 w-auto object-contain hidden dark:block"
+                />
+              </div>
+              <span className="min-w-0">
+                <span className="font-display block whitespace-nowrap text-base font-bold leading-tight tracking-tight">
+                  J&amp;K EduSetu
+                </span>
+                <span className="block text-[10px] text-[var(--text-secondary)] leading-tight">
+                  Independent student project
+                </span>
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation Links */}
@@ -128,14 +165,21 @@ export const FloatingNavbar = () => {
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-auto shrink-0 items-center justify-center">
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex h-9 w-auto shrink-0 items-center justify-center">
               <Image
-                src="/logo.png"
-                alt="J&K EduSetu Logo"
-                width={32}
-                height={42}
-                className="h-9 w-auto object-contain"
+                src="/brand/edusetu-mark.svg"
+                alt="J&K EduSetu"
+                width={36}
+                height={32}
+                className="h-8 w-auto object-contain dark:hidden"
+              />
+              <Image
+                src="/brand/edusetu-mark-dark.svg"
+                alt="J&K EduSetu"
+                width={36}
+                height={32}
+                className="h-8 w-auto object-contain hidden dark:block"
               />
             </div>
             <div>
