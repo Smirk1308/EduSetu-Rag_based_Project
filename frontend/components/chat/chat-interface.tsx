@@ -34,6 +34,18 @@ const cleanPlainText = (content: string) =>
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/(^|\n)\s{0,3}#{1,6}\s+/g, "$1");
 
+const MAX_HISTORY_MESSAGE_LENGTH = 3500;
+const HISTORY_TRUNCATION_MARKER = "\n[Earlier response shortened for conversation context]\n";
+
+function boundHistoryMessage(content: string) {
+  if (content.length <= MAX_HISTORY_MESSAGE_LENGTH) return content;
+
+  const available = MAX_HISTORY_MESSAGE_LENGTH - HISTORY_TRUNCATION_MARKER.length;
+  const startLength = Math.ceil(available / 2);
+  const endLength = Math.floor(available / 2);
+  return `${content.slice(0, startLength)}${HISTORY_TRUNCATION_MARKER}${content.slice(-endLength)}`;
+}
+
 export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps) => {
   const idPrefix = useId();
   const messageSequence = useRef(0);
@@ -82,9 +94,9 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
 
     try {
       const history = messages
-        .filter((message) => message.role === "user" || message.role === "assistant")
+        .filter((message) => message.id !== "initial-welcome" && (message.role === "user" || message.role === "assistant") && message.content.trim())
         .slice(-6)
-        .map(({ role, content }) => ({ role, content }));
+        .map(({ role, content }) => ({ role, content: boundHistoryMessage(content) }));
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -98,12 +110,20 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
       });
 
       if (!response.ok || !response.body) {
-        throw new Error(`Server returned HTTP ${response.status}`);
+        const message = response.status === 422
+          ? "This question or its conversation context is too long. Try shortening the question and send it again."
+          : response.status === 429
+            ? "The advisor is handling several questions right now. Please wait a moment and try again."
+            : response.status >= 500
+              ? "The advisor service is temporarily unavailable. Please try again shortly."
+              : "We couldn't send that question. Please try again.";
+        throw new Error(message);
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let finished = false;
+      let receivedTerminalEvent = false;
 
       while (!finished) {
         const { value, done } = await reader.read();
@@ -118,6 +138,7 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
             const data = JSON.parse(line.slice(6).trim());
             if (typeof data.chunk === "string") responseText.current += data.chunk;
             if (Array.isArray(data.sources)) responseSources.current = data.sources;
+            if (data.done === true) receivedTerminalEvent = true;
 
             setMessages((previous) => previous.map((message) =>
               message.id === assistantPlaceholderId
@@ -128,6 +149,10 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
             // Ignore incomplete or non-JSON server-sent events.
           }
         }
+      }
+
+      if (!receivedTerminalEvent) {
+        throw new Error("The connection ended before the answer finished. Please try again.");
       }
 
       setMessages((previous) => previous.map((message) =>
@@ -141,7 +166,11 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
         message.id === assistantPlaceholderId
           ? {
               ...message,
-              content: "We couldn't connect just now. Please try again, or switch on Low-data mode for locally available guidance.",
+              content: responseText.current
+                ? `${responseText.current}\n\n${error instanceof Error ? error.message : "The connection was interrupted. Please try again."}`
+                : error instanceof Error
+                  ? error.message
+                  : "We couldn't connect just now. Please try again, or switch on Low-data mode for locally available guidance.",
               isStreaming: false,
             }
           : message
@@ -157,10 +186,10 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
         <div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="eyebrow">Official Gazette Grounded AI Advisor</p>
+            <p className="eyebrow">Independent Student Guidance Advisor</p>
           </div>
           <h3 className="font-display mt-1 text-xl font-bold sm:text-2xl">Ask an education or policy question</h3>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">Answers are validated against active J&amp;K UT circulars with citations.</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">Answers are indicative guidelines retrieved from public notifications with document citations.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -187,7 +216,7 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
               {message.role === "assistant" && (
                 <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-[var(--brand)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />
-                  <span>EduSetu Verified Guide</span>
+                  <span>EduSetu Guidance</span>
                 </div>
               )}
               <p className="whitespace-pre-wrap">{cleanPlainText(message.content) || <span className="inline-flex items-center gap-2 text-[var(--text-muted)]"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> Finding relevant guidance…</span>}</p>
@@ -234,6 +263,7 @@ export const ChatInterface = ({ isOffline, onToggleOffline }: ChatInterfaceProps
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder={isOffline ? "Ask about information available offline…" : "Ask about scholarships, admissions, colleges…"}
+            maxLength={4000}
             disabled={isLoading}
             className="text-input"
           />

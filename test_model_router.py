@@ -20,6 +20,8 @@ from model_router import (
     is_multilingual_query,
     get_routed_model_info,
     mark_model_cooldown,
+    mark_provider_cooldown,
+    provider_is_available,
     record_model_usage,
     reset_router_state,
 )
@@ -162,6 +164,24 @@ class TestModelRouterFleet(unittest.TestCase):
         # A later routing decision automatically clears the expired cooldown.
         model_router._clear_expired_cooldowns(now=1031)
         self.assertNotIn(model_id, model_router._runtime_state()["exhausted_models"])
+
+    def test_10_provider_quota_cooldown_honors_retry_hints(self):
+        mark_provider_cooldown("groq", "429: rate limit, retry after 30 seconds", now=1000)
+
+        self.assertFalse(provider_is_available("groq", now=1010))
+        self.assertTrue(provider_is_available("groq", now=1031))
+
+    def test_11_daily_quota_cools_provider_and_model_404_does_not(self):
+        mark_provider_cooldown(
+            "google",
+            "RESOURCE_EXHAUSTED: GenerateRequestsPerDayPerProjectPerModel exceeded",
+            now=1000,
+        )
+        self.assertFalse(provider_is_available("google", now=1500))
+
+        reset_router_state()
+        mark_provider_cooldown("google", "404 model not found", now=1000)
+        self.assertTrue(provider_is_available("google", now=1000))
 
 
 if __name__ == "__main__":
