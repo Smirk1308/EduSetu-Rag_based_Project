@@ -138,6 +138,42 @@ class TestChatbotResilience(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "empty response"):
             list(result["stream"])
 
+    def test_model_specific_google_503_continues_to_next_gemini_model(self):
+        calls = []
+
+        class OverloadedModelStream:
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                raise RuntimeError(
+                    "503 UNAVAILABLE: This model is currently experiencing high demand"
+                )
+
+        def create_chat(model, **kwargs):
+            calls.append(model)
+            if len(calls) == 1:
+                return SimpleNamespace(
+                    send_message_stream=lambda prompt: OverloadedModelStream()
+                )
+            return SimpleNamespace(
+                send_message_stream=lambda prompt: iter([SimpleNamespace(text="Gemini answer")])
+            )
+
+        google_client = SimpleNamespace(chats=SimpleNamespace(create=create_chat))
+        engine = self._engine(groq_client=None, google_client=google_client)
+
+        result = engine.generate_answer(
+            "Where is NIT Srinagar located?",
+            google_api_key="google-test-key",
+            stream=True,
+        )
+
+        self.assertEqual(list(result["stream"]), ["Gemini answer"])
+        self.assertEqual(len(calls), 2)
+        self.assertNotEqual(calls[0], calls[1])
+        self.assertTrue(model_router.provider_is_available("google"))
+
 
 if __name__ == "__main__":
     unittest.main()

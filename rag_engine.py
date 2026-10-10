@@ -158,6 +158,15 @@ def _store_cached_response(cache_key: Optional[str], response: Dict[str, Any]) -
             "expires_at": now + _RESPONSE_CACHE_TTL_SECONDS,
         }
 
+
+def _is_google_provider_wide_error(error_text: str) -> bool:
+    """Only shared quota/auth failures should stop trying other Google models."""
+    lowered = error_text.lower()
+    return any(
+        token in lowered
+        for token in ("429", "resource_exhausted", "rate limit", "quota", "401", "403", "unauthorized", "forbidden")
+    )
+
 class LazySentenceTransformerEmbeddingFunction(EmbeddingFunction[Documents]):
     """ChromaDB-compatible lazy embedding function that delays sentence_transformers & torch loading until first retrieval."""
     def __init__(self, model_name: str = EMBEDDING_MODEL_NAME):
@@ -961,7 +970,8 @@ Instructions:
                             err_str = str(try_err)
                             if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                                 mark_model_cooldown(try_model, err_str)
-                            mark_provider_cooldown("google", err_str)
+                            if _is_google_provider_wide_error(err_str):
+                                mark_provider_cooldown("google", err_str)
                             logger.warning(f"Gemini streaming attempt on '{try_model}' failed: {try_err}. Checking next candidate in pool...")
                             if gemini_streamed_any:
                                 raise
@@ -1041,7 +1051,8 @@ Instructions:
                         err_str = str(e)
                         if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "503", "UNAVAILABLE", "500"]):
                             mark_model_cooldown(try_model, err_str)
-                        mark_provider_cooldown("google", err_str)
+                        if _is_google_provider_wide_error(err_str):
+                            mark_provider_cooldown("google", err_str)
                         logger.warning(f"Gemini attempt with model '{try_model}' failed: {e}. Checking next candidate in pool...")
                         if not provider_is_available("google"):
                             break
