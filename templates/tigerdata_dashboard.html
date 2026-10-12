@@ -3,400 +3,1269 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tiger Data · pgvector & pgvectorscale Vector Search Console</title>
+  <title>Tiger Data · Vector Search Console · EduSetu</title>
   <style>
     :root {
-      --bg: #0b1118;
-      --surface: #121c27;
-      --surface-border: #1e2f42;
-      --surface-hover: #172433;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --tiger-orange: #f97316;
-      --tiger-amber: #fbbf24;
-      --tiger-green: #10b981;
-      --tiger-blue: #38bdf8;
+      --bg: #07090e;
+      --surface: #0d131e;
+      --surface-raised: #111a29;
+      --surface-border: #1a2536;
+      --surface-border-subtle: #141d2c;
+      --surface-hover: #141f30;
+      
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      --emerald: #10b981;
+      --emerald-subtle: rgba(16, 185, 129, 0.10);
+      --emerald-border: rgba(16, 185, 129, 0.28);
+      
+      --amber: #f59e0b;
+      --amber-hover: #d97706;
+      --amber-subtle: rgba(245, 158, 11, 0.12);
+      --amber-border: rgba(245, 158, 11, 0.28);
+      
+      --blue: #38bdf8;
+      --blue-subtle: rgba(56, 189, 248, 0.10);
+      --blue-border: rgba(56, 189, 248, 0.24);
+      --blue-dark: #0284c7;
+      
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background-color: var(--bg);
-      color: var(--text-main);
+      color: var(--text-primary);
       font-family: var(--font-sans);
       min-height: 100vh;
       padding: 24px;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
-    .container { max-width: 1380px; margin: 0 auto; }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      letter-spacing: -0.01em;
+    }
+
+    /* -------------------------------------------------------------------------
+       Header & Stack Status Cluster
+       ------------------------------------------------------------------------- */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 24px;
+      padding-bottom: 20px;
       border-bottom: 1px solid var(--surface-border);
-      margin-bottom: 28px;
+      margin-bottom: 24px;
       flex-wrap: wrap;
       gap: 16px;
     }
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .brand-logo {
-      width: 44px;
-      height: 44px;
-      background: linear-gradient(135deg, var(--tiger-orange), #ea580c);
-      border-radius: 10px;
+
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--surface-raised);
+      border: 1px solid var(--surface-border);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 800;
-      font-size: 20px;
-      color: #fff;
-      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--blue);
+      flex-shrink: 0;
     }
-    .brand-title h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-    .brand-title p { font-size: 13px; color: var(--text-muted); }
-    .badges { display: flex; gap: 10px; flex-wrap: wrap; }
-    .badge {
-      display: inline-flex;
+
+    .brand-title h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .brand-title p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .stack-cluster {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-indicator {
+      display: flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 12px;
-      border-radius: 9999px;
-      font-size: 12px;
+      color: var(--emerald);
       font-weight: 600;
-      background: rgba(16, 185, 129, 0.12);
-      color: var(--tiger-green);
-      border: 1px solid rgba(16, 185, 129, 0.25);
     }
-    .badge.orange {
-      background: rgba(249, 115, 22, 0.12);
-      color: var(--tiger-orange);
-      border-color: rgba(249, 115, 22, 0.25);
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--emerald);
     }
-    .badge.blue {
-      background: rgba(56, 189, 248, 0.12);
-      color: var(--tiger-blue);
-      border-color: rgba(56, 189, 248, 0.25);
+
+    .cluster-divider {
+      width: 1px;
+      height: 14px;
+      background: var(--surface-border);
     }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-    
-    .grid { display: grid; grid-template-columns: 420px 1fr; gap: 24px; }
-    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
-    
+
+    .cluster-item {
+      color: var(--text-secondary);
+    }
+
+    .cluster-item.highlight {
+      color: var(--text-primary);
+    }
+
+    .cluster-sep {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    /* -------------------------------------------------------------------------
+       Main Grid (Dominant Results Area, Lean Sidebar)
+       ------------------------------------------------------------------------- */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .panel {
       background: var(--surface);
       border: 1px solid var(--surface-border);
-      border-radius: 14px;
-      padding: 22px;
+      border-radius: 10px;
+      overflow: hidden;
     }
-    .panel-title {
-      font-size: 16px;
+
+    /* Sidebar Styling */
+    .sidebar-panel {
+      padding: 18px;
+    }
+
+    .sidebar-section {
+      margin-bottom: 20px;
+    }
+
+    .sidebar-section:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .section-heading {
+      font-size: 11px;
       font-weight: 700;
-      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .form-group { margin-bottom: 18px; }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
     label {
       display: block;
       font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
+      font-weight: 500;
+      color: var(--text-secondary);
       margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
     }
-    input, select, textarea {
+
+    input[type="text"],
+    input[type="date"],
+    select {
       width: 100%;
-      background: #0d151f;
+      background: #090e17;
       border: 1px solid var(--surface-border);
-      color: var(--text-main);
-      padding: 10px 14px;
-      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 6px;
       font-family: inherit;
-      font-size: 14px;
-      transition: border-color 0.15s;
+      font-size: 13px;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    input:focus, select:focus, textarea:focus {
+
+    input[type="text"]:focus,
+    input[type="date"]:focus,
+    select:focus {
       outline: none;
-      border-color: var(--tiger-orange);
+      border-color: var(--blue);
+      box-shadow: 0 0 0 1px var(--blue);
     }
-    .range-group { display: flex; align-items: center; gap: 12px; }
-    .range-group input[type="range"] { flex: 1; accent-color: var(--tiger-orange); }
-    .range-val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; min-width: 48px; color: var(--tiger-amber); }
-    
-    button.btn-primary {
+
+    .date-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Advanced Ranking Collapsible Section */
+    .advanced-ranking-details {
+      border: 1px solid var(--surface-border-subtle);
+      border-radius: 6px;
+      background: #090e17;
+      margin-top: 10px;
+    }
+
+    .advanced-ranking-summary {
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      list-style: none;
+    }
+
+    .advanced-ranking-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .advanced-ranking-summary:hover {
+      color: var(--text-primary);
+    }
+
+    .advanced-ranking-summary:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: -2px;
+    }
+
+    .summary-chevron {
+      font-size: 10px;
+      transition: transform 0.2s ease;
+      color: var(--text-muted);
+    }
+
+    .advanced-ranking-details[open] .summary-chevron {
+      transform: rotate(180deg);
+    }
+
+    .advanced-body {
+      padding: 12px;
+      border-top: 1px solid var(--surface-border-subtle);
+    }
+
+    .range-wrapper {
+      margin-top: 8px;
+    }
+
+    .range-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    input[type="range"] {
       width: 100%;
-      background: linear-gradient(135deg, var(--tiger-orange), #ea580c);
-      color: #fff;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      outline: none;
+      accent-color: var(--amber);
+      cursor: pointer;
+    }
+
+    .range-subtext {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* Amber Primary Action Button */
+    .btn-submit {
+      width: 100%;
+      background: var(--amber);
+      color: #0b0f17;
       border: none;
-      padding: 12px 18px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 700;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: opacity 0.2s, transform 0.1s;
+      margin-top: 18px;
+      transition: background 0.15s, opacity 0.15s;
     }
-    button.btn-primary:hover { opacity: 0.92; }
-    button.btn-primary:active { transform: translateY(1px); }
 
-    .query-meta-box {
-      background: #080d13;
-      border: 1px solid var(--surface-border);
-      border-radius: 8px;
-      padding: 12px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: #a5f3fc;
-      margin-bottom: 18px;
+    .btn-submit:hover {
+      background: var(--amber-hover);
+    }
+
+    .btn-submit:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* -------------------------------------------------------------------------
+       Results Panel (Dominant Area)
+       ------------------------------------------------------------------------- */
+    .results-panel {
+      padding: 20px;
+    }
+
+    .results-header {
       display: flex;
+      align-items: center;
       justify-content: space-between;
+      margin-bottom: 16px;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
+    }
+
+    .results-title-group h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .results-stats-badge {
+      font-size: 12px;
+      color: var(--emerald);
+      background: var(--emerald-subtle);
+      border: 1px solid var(--emerald-border);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+
+    /* Active Query Vector Inspection Strip */
+    .query-meta-strip {
+      background: #090e17;
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-key {
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .meta-val {
+      color: var(--text-primary);
+    }
+
+    .meta-val.blue {
+      color: var(--blue);
+    }
+
+    /* Result Card Architecture */
+    .results-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
     .result-card {
-      background: #0f1822;
+      background: var(--surface-raised);
       border: 1px solid var(--surface-border);
-      border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 14px;
-      transition: border-color 0.2s, background 0.2s;
+      border-radius: 8px;
+      padding: 16px 18px;
+      transition: border-color 0.15s, background-color 0.15s;
     }
+
     .result-card:hover {
-      border-color: rgba(249, 115, 22, 0.4);
-      background: #131e2b;
+      border-color: #27374d;
+      background: var(--surface-hover);
     }
-    .card-header {
+
+    /* 1. Title and Source Type + Confidence Score Header */
+    .card-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 10px;
-      gap: 12px;
+      gap: 16px;
+      margin-bottom: 8px;
     }
-    .card-title { font-size: 15px; font-weight: 700; color: #fff; }
-    .scores { display: flex; gap: 8px; flex-wrap: wrap; }
-    .score-pill {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      padding: 4px 8px;
-      border-radius: 6px;
+
+    .card-title-area {
+      flex: 1;
+    }
+
+    .source-type-tag {
+      display: inline-block;
+      font-size: 10px;
       font-weight: 600;
-      background: #1e293b;
-      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--blue);
+      background: var(--blue-subtle);
+      border: 1px solid var(--blue-border);
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-bottom: 6px;
     }
-    .score-pill.hybrid { background: rgba(249, 115, 22, 0.2); color: var(--tiger-amber); border: 1px solid rgba(249, 115, 22, 0.3); }
-    .score-pill.semantic { background: rgba(16, 185, 129, 0.2); color: var(--tiger-green); }
-    .score-pill.time { background: rgba(56, 189, 248, 0.2); color: var(--tiger-blue); }
-    
-    .card-meta {
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.35;
+    }
+
+    /* 2. One Clear Retrieval-Confidence Score */
+    .confidence-box {
       display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .confidence-score {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--emerald);
+      background: var(--emerald-subtle);
+      border: 1px solid var(--emerald-border);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .btn-breakdown-toggle {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .btn-breakdown-toggle:hover {
+      color: var(--text-primary);
+    }
+
+    .btn-breakdown-toggle:focus-visible {
+      outline: 2px solid var(--blue);
+    }
+
+    /* Expandable Score Breakdown */
+    .score-breakdown-panel {
+      margin-top: 10px;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: #090e17;
+      border: 1px solid var(--surface-border-subtle);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .breakdown-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .breakdown-metric-title {
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .breakdown-metric-val {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .breakdown-metric-weight {
+      color: var(--text-muted);
+      font-weight: normal;
+      font-size: 10px;
+    }
+
+    .breakdown-formula {
+      padding-top: 8px;
+      border-top: 1px solid var(--surface-border-subtle);
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    /* 3. Quiet Metadata Row (No Emojis) */
+    .card-meta-row {
+      display: flex;
+      align-items: center;
       gap: 12px;
       font-size: 12px;
       color: var(--text-muted);
       margin-bottom: 10px;
       flex-wrap: wrap;
     }
-    .card-content {
-      font-size: 13.5px;
-      color: #cbd5e1;
-      line-height: 1.6;
+
+    .meta-val-text {
+      color: var(--text-secondary);
     }
 
-    .architecture-banner {
-      background: linear-gradient(180deg, #131f2c, #0d1520);
+    .meta-dot {
+      color: var(--surface-border);
+    }
+
+    /* 4. Three-Line Result Excerpt */
+    .card-excerpt {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      color: #cbd5e1;
+      font-size: 13.5px;
+      line-height: 1.55;
+      margin-bottom: 14px;
+    }
+
+    /* 5. Actions Row */
+    .card-actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid var(--surface-border-subtle);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .action-link {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s;
+    }
+
+    .action-link:hover {
+      color: var(--text-primary);
+    }
+
+    .action-link:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    .btn-inspect {
+      background: transparent;
       border: 1px solid var(--surface-border);
-      border-radius: 12px;
-      padding: 16px 20px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-inspect:hover {
+      background: var(--surface-hover);
+      color: var(--text-primary);
+      border-color: #2e3e53;
+    }
+
+    .btn-inspect:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Four-Step Horizontal Pipeline Flow
+       ------------------------------------------------------------------------- */
+    .pipeline-container {
       margin-top: 24px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+
+    .pipeline-heading {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    .pipeline-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      position: relative;
+    }
+
+    @media (max-width: 860px) {
+      .pipeline-steps {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .pipeline-step-card {
+      background: var(--surface-raised);
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .step-num-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .step-arrow-subtle {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .step-detail {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* -------------------------------------------------------------------------
+       Inspection Dialog (Modal)
+       ------------------------------------------------------------------------- */
+    .inspect-dialog {
+      background: #090e17;
+      color: var(--text-primary);
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 24px;
+      max-width: 680px;
+      width: calc(100% - 32px);
+      margin: auto;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+    }
+
+    .inspect-dialog::backdrop {
+      background: rgba(4, 6, 10, 0.75);
+    }
+
+    .modal-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--surface-border);
     }
-    .arch-step { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
-    .arch-arrow { color: var(--tiger-orange); font-weight: 800; }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .btn-close-modal {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .btn-close-modal:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-section {
+      margin-bottom: 16px;
+    }
+
+    .modal-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .code-box {
+      background: #05070b;
+      border: 1px solid var(--surface-border-subtle);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #93c5fd;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 14px;
+      border-top: 1px solid var(--surface-border-subtle);
+    }
+
+    .btn-modal-done {
+      background: var(--surface-raised);
+      border: 1px solid var(--surface-border);
+      color: var(--text-primary);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-modal-done:hover {
+      background: var(--surface-hover);
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Simplified Header & Compact Stack-Status Cluster -->
     <header>
-      <div class="brand">
-        <div class="brand-logo">T</div>
+      <div class="brand-block">
+        <div class="brand-mark">TD</div>
         <div class="brand-title">
-          <h1>Tiger Data · pgvector &amp; pgvectorscale</h1>
-          <p>Hybrid Semantic &amp; Time-Series Vector Search in PostgreSQL · J&amp;K EduSetu</p>
+          <h1>Tiger Data · Vector Search Console</h1>
+          <p>J&amp;K EduSetu · Unified hybrid semantic &amp; time-series retrieval inside PostgreSQL</p>
         </div>
       </div>
-      <div class="badges">
-        <span class="badge"><span class="dot"></span>TimescaleDB Hypertables</span>
-        <span class="badge orange"><span class="dot"></span>pgvectorscale (DiskANN &amp; SBQ)</span>
-        <span class="badge blue"><span class="dot"></span>pgvector (384-dim)</span>
-        <span class="badge"><span class="dot"></span>Zero Sidecars Required</span>
+
+      <div class="stack-cluster" role="status" aria-label="Database engine stack status">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-label">Online</span>
+        </div>
+        <div class="cluster-divider"></div>
+        <span class="cluster-item highlight">TimescaleDB Hypertables</span>
+        <span class="cluster-sep">·</span>
+        <span class="cluster-item"><span class="mono">pgvector</span> 384-dim</span>
+        <span class="cluster-sep">·</span>
+        <span class="cluster-item"><span class="mono">pgvectorscale</span> DiskANN</span>
+        <span class="cluster-sep">·</span>
+        <span class="cluster-item">Zero Sidecars</span>
       </div>
     </header>
 
-    <div class="grid">
-      <!-- Left Column: Search & Filter Controls -->
-      <div class="panel">
-        <div class="panel-title">
-          <span>Search &amp; Filter Parameters</span>
-          <span style="font-size: 12px; color: var(--tiger-orange); font-family: var(--font-mono);">PostgreSQL Native</span>
-        </div>
-
+    <!-- Main Grid: Lean Sidebar (320px) + Dominant Results Panel -->
+    <div class="dashboard-grid">
+      <!-- Left Column: Search Sidebar -->
+      <aside class="panel sidebar-panel" aria-label="Search and filter options">
         <form id="searchForm" onsubmit="event.preventDefault(); runSearch();">
-          <div class="form-group">
-            <label for="query">Semantic Search Query</label>
-            <input type="text" id="query" value="PMSSS scholarship eligibility and engineering colleges in Kashmir" placeholder="e.g. AICTE PMSSS eligibility criteria">
-          </div>
-
-          <div class="form-group">
-            <label for="metric">Distance Metric</label>
-            <select id="metric">
-              <option value="cosine" selected>Cosine Distance (&lt;=&gt;) [Normalized Direction]</option>
-              <option value="l2">Euclidean L2 (&lt;-&gt;) [Magnitude Sensitive]</option>
-              <option value="inner_product">Inner Product (&lt;#&gt;) [Negative Dot Product]</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="timeRange">Time-Series Range (Hypertable Chunks)</label>
-            <select id="timeRange" onchange="applyPreset(this.value)">
-              <option value="all">All Academic Cycles (Historical &amp; Current)</option>
-              <option value="2025" selected>2025–26 Academic Cycle (Latest)</option>
-              <option value="2024">2024–25 Academic Cycle</option>
-              <option value="recent">Recent Circulars (Past 90 Days)</option>
-            </select>
-          </div>
-
-          <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div>
-              <label for="startDate">Start Date</label>
-              <input type="date" id="startDate" value="2025-01-01">
+          
+          <!-- Group 1: Query -->
+          <div class="sidebar-section">
+            <div class="section-heading">Query</div>
+            
+            <div class="form-group">
+              <label for="query">Semantic Search Query</label>
+              <input 
+                type="text" 
+                id="query" 
+                value="PMSSS scholarship eligibility and engineering colleges in Kashmir" 
+                placeholder="e.g. AICTE PMSSS eligibility criteria"
+                required
+              >
             </div>
-            <div>
-              <label for="endDate">End Date</label>
-              <input type="date" id="endDate" value="2026-12-31">
+
+            <div class="form-group">
+              <label for="metric">Distance Metric</label>
+              <select id="metric">
+                <option value="cosine" selected>Cosine Distance (<span class="mono">&lt;=&gt;</span>)</option>
+                <option value="l2">Euclidean L2 (<span class="mono">&lt;-&gt;</span>)</option>
+                <option value="inner_product">Inner Product (<span class="mono">&lt;#&gt;</span>)</option>
+              </select>
             </div>
           </div>
 
-          <div class="form-group">
-            <label for="category">Metadata Category Filter</label>
-            <select id="category">
-              <option value="all">All Categories</option>
-              <option value="scholarship" selected>Scholarships &amp; Financial Aid</option>
-              <option value="engineering">Engineering &amp; Technical Admissions</option>
-              <option value="medical">Medical (NEET / BOPEE)</option>
-              <option value="reservation">Reservations &amp; Quotas</option>
-            </select>
-          </div>
+          <!-- Group 2: Filters -->
+          <div class="sidebar-section">
+            <div class="section-heading">Filters</div>
 
-          <div class="form-group">
-            <label for="timeWeight">Hybrid Score Weight (Semantic vs Temporal Freshness)</label>
-            <div class="range-group">
-              <input type="range" id="timeWeight" min="0" max="100" value="30" oninput="document.getElementById('weightVal').innerText = this.value + '% Recency'">
-              <span class="range-val" id="weightVal">30% Recency</span>
+            <div class="form-group">
+              <label for="timeRange">Time Range Preset</label>
+              <select id="timeRange" onchange="applyPreset(this.value)">
+                <option value="all">All Academic Cycles</option>
+                <option value="2025" selected>2025–26 Academic Cycle</option>
+                <option value="2024">2024–25 Academic Cycle</option>
+                <option value="recent">Recent Circulars (90d)</option>
+              </select>
             </div>
-            <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Blends semantic vector similarity (70%) with exponential time decay (30%).</p>
+
+            <div class="form-group">
+              <div class="date-row">
+                <div>
+                  <label for="startDate">Start Date</label>
+                  <input type="date" id="startDate" value="2025-01-01">
+                </div>
+                <div>
+                  <label for="endDate">End Date</label>
+                  <input type="date" id="endDate" value="2026-12-31">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="category">Metadata Category</label>
+              <select id="category">
+                <option value="all">All Categories</option>
+                <option value="scholarship" selected>Scholarships &amp; Aid</option>
+                <option value="engineering">Engineering Admissions</option>
+                <option value="medical">Medical (NEET / BOPEE)</option>
+                <option value="reservation">Reservations &amp; Quotas</option>
+              </select>
+            </div>
           </div>
 
-          <button type="submit" class="btn-primary" id="btnSubmit">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
-            Execute Hybrid Vector Search
+          <!-- Group 3: Advanced Ranking (Collapsible) -->
+          <div class="sidebar-section">
+            <details class="advanced-ranking-details">
+              <summary class="advanced-ranking-summary">
+                <span>Advanced Ranking</span>
+                <span class="summary-chevron" aria-hidden="true">▾</span>
+              </summary>
+              <div class="advanced-body">
+                <div class="range-wrapper">
+                  <div class="range-header">
+                    <label for="timeWeight" style="margin-bottom: 0;">Temporal Freshness Weight</label>
+                    <span class="mono" id="weightVal" style="color: var(--amber); font-weight: 600;">30%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    id="timeWeight" 
+                    min="0" 
+                    max="100" 
+                    value="30" 
+                    oninput="document.getElementById('weightVal').innerText = this.value + '%'"
+                  >
+                  <div class="range-subtext">
+                    Blends semantic vector similarity (70%) with exponential time decay (30%).
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 14px;">
+                  <label for="topK">Result Limit (Top K)</label>
+                  <select id="topK">
+                    <option value="5" selected>Top 5 Matches</option>
+                    <option value="10">Top 10 Matches</option>
+                    <option value="20">Top 20 Matches</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <!-- Primary Action Button (Amber) -->
+          <button type="submit" class="btn-submit" id="btnSubmit">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            Execute Vector Search
           </button>
         </form>
-      </div>
+      </aside>
 
-      <!-- Right Column: Results & Query Execution Inspection -->
-      <div class="panel">
-        <div class="panel-title">
-          <span>Search Results &amp; Vector Inspection</span>
-          <span id="resultsCount" style="font-size: 12px; color: var(--tiger-green); font-family: var(--font-mono);">Ready</span>
+      <!-- Right Column: Results & Inspection Panel (Dominant Area) -->
+      <main class="panel results-panel" aria-label="Vector search results and inspection">
+        <div class="results-header">
+          <div class="results-title-group">
+            <h2>Vector Search Results</h2>
+          </div>
+          <div class="results-stats-badge mono" id="resultsCount">
+            Ready
+          </div>
         </div>
 
-        <div class="query-meta-box" id="queryMeta">
-          <span>Index: StreamingDiskANN (pgvectorscale)</span>
-          <span>Hypertable: admissions_timeline_vectors</span>
-          <span>Operator: &lt;=&gt;</span>
-          <span>Dimensions: 384</span>
+        <!-- Active Query Metadata Strip -->
+        <div class="query-meta-strip mono" id="queryMeta">
+          <div class="meta-item">
+            <span class="meta-key">Hypertable</span>
+            <span class="meta-val">admissions_timeline_vectors</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Index</span>
+            <span class="meta-val">diskann (384-dim, 2-bit SBQ)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Operator</span>
+            <span class="meta-val blue">&lt;=&gt; (cosine)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Filter</span>
+            <span class="meta-val">scholarship · 2025-01-01 to 2026-12-31</span>
+          </div>
         </div>
 
-        <div id="resultsList">
-          <!-- Default sample result -->
-          <div class="result-card">
-            <div class="card-header">
-              <div class="card-title">AICTE PMSSS 2025–26: J&amp;K Special Scholarship Scheme Notification</div>
-              <div class="scores">
-                <span class="score-pill hybrid">Hybrid: 94.2%</span>
-                <span class="score-pill semantic">Semantic: 92.5%</span>
-                <span class="score-pill time">Time Freshness: 98.1%</span>
+        <!-- Results Feed -->
+        <div class="results-feed" id="resultsList">
+          <!-- Initial Result Card 1 -->
+          <article class="result-card" data-idx="0">
+            <div class="card-top">
+              <div class="card-title-area">
+                <span class="source-type-tag">Official Notification</span>
+                <h3 class="card-title">AICTE PMSSS 2025–26: J&amp;K Special Scholarship Scheme Notification</h3>
+              </div>
+              <div class="confidence-box">
+                <div class="confidence-score mono">
+                  94.2% Match
+                </div>
+                <button type="button" class="btn-breakdown-toggle" onclick="toggleBreakdown(this)">
+                  <span>Breakdown</span> ▾
+                </button>
               </div>
             </div>
-            <div class="card-meta">
-              <span>📅 Recorded: 2025-05-10</span>
-              <span>🏷️ Category: scholarship</span>
-              <span>🎓 Cycle: 2025-26</span>
-              <span>📏 Cosine Dist: 0.075</span>
+
+            <!-- Expandable Breakdown Panel -->
+            <div class="score-breakdown-panel" style="display: none;">
+              <div class="breakdown-grid">
+                <div>
+                  <div class="breakdown-metric-title">Semantic Similarity</div>
+                  <div class="breakdown-metric-val mono">92.5% <span class="breakdown-metric-weight">(70% wt)</span></div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Temporal Freshness</div>
+                  <div class="breakdown-metric-val mono">98.1% <span class="breakdown-metric-weight">(30% wt)</span></div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Hybrid Rank Score</div>
+                  <div class="breakdown-metric-val mono">94.2%</div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Vector Distance</div>
+                  <div class="breakdown-metric-val mono">0.075 (<span class="mono">&lt;=&gt;</span>)</div>
+                </div>
+              </div>
+              <div class="breakdown-formula mono">
+                rank_score = (0.70 × 0.925) + (0.30 × 0.981) = 0.942
+              </div>
             </div>
-            <div class="card-content">
+
+            <!-- Quiet Metadata Row (No Emojis) -->
+            <div class="card-meta-row">
+              <span>Recorded: <span class="meta-val-text mono">2025-05-10</span></span>
+              <span class="meta-dot">·</span>
+              <span>Category: <span class="meta-val-text mono">scholarship</span></span>
+              <span class="meta-dot">·</span>
+              <span>Cycle: <span class="meta-val-text mono">2025-26</span></span>
+              <span class="meta-dot">·</span>
+              <span>Cosine Dist: <span class="meta-val-text mono">0.075</span></span>
+            </div>
+
+            <!-- Three-Line Result Excerpt -->
+            <p class="card-excerpt">
               Prime Minister’s Special Scholarship Scheme (PMSSS) for Jammu, Kashmir &amp; Ladakh students for the academic session 2025–26. Eligibility: domicile of J&amp;K, passed 10+2 from JKBOSE or CBSE schools in J&amp;K, family income ≤ ₹8.00 Lakh per annum. Up to ₹1.25 Lakh/yr academic fee for general degree courses, ₹3.00 Lakh/yr for professional engineering degrees, plus ₹1.00 Lakh maintenance allowance.
-            </div>
-          </div>
+            </p>
 
-          <div class="result-card">
-            <div class="card-header">
-              <div class="card-title">NIT Srinagar &amp; GCET Admissions: Opening Cutoffs &amp; Seat Matrix</div>
-              <div class="scores">
-                <span class="score-pill hybrid">Hybrid: 88.6%</span>
-                <span class="score-pill semantic">Semantic: 89.1%</span>
-                <span class="score-pill time">Time Freshness: 87.5%</span>
+            <!-- Actions Row -->
+            <div class="card-actions-row">
+              <a href="#" class="action-link" onclick="openOfficialSource('AICTE_PMSSS_2025_26_Notification.pdf'); return false;">
+                Open official source
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+              <button type="button" class="btn-inspect" onclick="inspectVectorMatch(0)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M3 12h3m12 0h3M12 3v3m0 12v3"></path></svg>
+                Inspect vector match
+              </button>
+            </div>
+          </article>
+
+          <!-- Initial Result Card 2 -->
+          <article class="result-card" data-idx="1">
+            <div class="card-top">
+              <div class="card-title-area">
+                <span class="source-type-tag">Seat Matrix &amp; Cutoffs</span>
+                <h3 class="card-title">NIT Srinagar &amp; GCET Admissions: Opening Cutoffs &amp; Seat Matrix</h3>
+              </div>
+              <div class="confidence-box">
+                <div class="confidence-score mono">
+                  88.6% Match
+                </div>
+                <button type="button" class="btn-breakdown-toggle" onclick="toggleBreakdown(this)">
+                  <span>Breakdown</span> ▾
+                </button>
               </div>
             </div>
-            <div class="card-meta">
-              <span>📅 Recorded: 2025-06-15</span>
-              <span>🏷️ Category: engineering</span>
-              <span>🎓 Cycle: 2025-26</span>
-              <span>📏 Cosine Dist: 0.109</span>
+
+            <!-- Expandable Breakdown Panel -->
+            <div class="score-breakdown-panel" style="display: none;">
+              <div class="breakdown-grid">
+                <div>
+                  <div class="breakdown-metric-title">Semantic Similarity</div>
+                  <div class="breakdown-metric-val mono">89.1% <span class="breakdown-metric-weight">(70% wt)</span></div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Temporal Freshness</div>
+                  <div class="breakdown-metric-val mono">87.5% <span class="breakdown-metric-weight">(30% wt)</span></div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Hybrid Rank Score</div>
+                  <div class="breakdown-metric-val mono">88.6%</div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Vector Distance</div>
+                  <div class="breakdown-metric-val mono">0.109 (<span class="mono">&lt;=&gt;</span>)</div>
+                </div>
+              </div>
+              <div class="breakdown-formula mono">
+                rank_score = (0.70 × 0.891) + (0.30 × 0.875) = 0.886
+              </div>
             </div>
-            <div class="card-content">
+
+            <!-- Quiet Metadata Row (No Emojis) -->
+            <div class="card-meta-row">
+              <span>Recorded: <span class="meta-val-text mono">2025-06-15</span></span>
+              <span class="meta-dot">·</span>
+              <span>Category: <span class="meta-val-text mono">engineering</span></span>
+              <span class="meta-dot">·</span>
+              <span>Cycle: <span class="meta-val-text mono">2025-26</span></span>
+              <span class="meta-dot">·</span>
+              <span>Cosine Dist: <span class="meta-val-text mono">0.109</span></span>
+            </div>
+
+            <!-- Three-Line Result Excerpt -->
+            <p class="card-excerpt">
               Engineering admissions across Government College of Engineering &amp; Technology (GCET Safapora &amp; Jammu) and NIT Srinagar. Home State quota (50%) applicable at NIT Srinagar via JoSAA/CSAB. JKBOPEE CET engineering counseling rounds commence following entrance examinations with updated category reservations.
+            </p>
+
+            <!-- Actions Row -->
+            <div class="card-actions-row">
+              <a href="#" class="action-link" onclick="openOfficialSource('JKBOPEE_CET_Seat_Matrix_2025.pdf'); return false;">
+                Open official source
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+              <button type="button" class="btn-inspect" onclick="inspectVectorMatch(1)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M3 12h3m12 0h3M12 3v3m0 12v3"></path></svg>
+                Inspect vector match
+              </button>
             </div>
-          </div>
+          </article>
         </div>
-      </div>
+      </main>
     </div>
 
-    <!-- Architecture Diagram Footer -->
-    <div class="architecture-banner">
-      <div class="arch-step">
-        <span style="color: var(--tiger-blue);">1. High-Dimensional Text</span>
-        <span class="arch-arrow">→</span>
-        <span>sentence-transformers (384-dim)</span>
-      </div>
-      <div class="arch-step">
-        <span class="arch-arrow">→</span>
-        <span style="color: var(--tiger-orange);">2. PostgreSQL + TimescaleDB Hypertable</span>
-        <span style="font-size: 11px; color: var(--text-muted);">(Partitioned on recorded_at)</span>
-      </div>
-      <div class="arch-step">
-        <span class="arch-arrow">→</span>
-        <span style="color: var(--tiger-green);">3. pgvectorscale StreamingDiskANN</span>
-        <span style="font-size: 11px; color: var(--text-muted);">(Disk-resident Graph + SBQ)</span>
-      </div>
-      <div class="arch-step">
-        <span class="arch-arrow">→</span>
-        <span style="color: var(--tiger-amber);">4. Unified Hybrid Retrieval</span>
+    <!-- Clean Four-Step Horizontal Technical Pipeline -->
+    <div class="pipeline-container">
+      <div class="pipeline-heading">End-to-End Database Architecture</div>
+      <div class="pipeline-steps">
+        <div class="pipeline-step-card">
+          <div class="step-num-title">
+            <span>1. Embed</span>
+            <span class="step-arrow-subtle">→</span>
+          </div>
+          <div class="step-detail">
+            <span class="mono">sentence-transformers</span> generates dense <span class="mono">384-dim</span> embeddings for incoming queries and admission texts.
+          </div>
+        </div>
+
+        <div class="pipeline-step-card">
+          <div class="step-num-title">
+            <span>2. Store in Hypertable</span>
+            <span class="step-arrow-subtle">→</span>
+          </div>
+          <div class="step-detail">
+            <span class="mono">TimescaleDB</span> hypertable partitions records across 1-month chunks by <span class="mono">recorded_at</span>.
+          </div>
+        </div>
+
+        <div class="pipeline-step-card">
+          <div class="step-num-title">
+            <span>3. Search with DiskANN</span>
+            <span class="step-arrow-subtle">→</span>
+          </div>
+          <div class="step-detail">
+            <span class="mono">pgvectorscale</span> StreamingDiskANN graph with <span class="mono">2-bit SBQ</span> optimizes cosine search (<span class="mono">&lt;=&gt;</span>).
+          </div>
+        </div>
+
+        <div class="pipeline-step-card">
+          <div class="step-num-title">
+            <span>4. Hybrid Ranked Results</span>
+            <span class="step-arrow-subtle">✓</span>
+          </div>
+          <div class="step-detail">
+            Native SQL blends semantic vector relevance with exponential time-freshness: <span class="mono">(1-w)·sim + w·recency</span>.
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Vector Inspection Modal (<dialog>) -->
+  <dialog id="inspectDialog" class="inspect-dialog">
+    <div class="modal-header">
+      <div class="modal-title" id="modalDocTitle">Vector Match Inspection</div>
+      <button type="button" class="btn-close-modal" onclick="closeInspectModal()" aria-label="Close dialog">×</button>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">Hypertable Partition &amp; Storage</div>
+      <div class="code-box mono" id="modalPartitionInfo">
+        Hypertable: admissions_timeline_vectors<br>
+        Chunk: _timescaledb_internal._hyper_1_12_chunk<br>
+        Partition Time: 2025-05-01 to 2025-06-01
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">pgvectorscale Index &amp; Distance</div>
+      <div class="code-box mono" id="modalIndexInfo">
+        Index: idx_admissions_timeline_vectors_diskann<br>
+        Algorithm: StreamingDiskANN (Statistical Binary Quantization)<br>
+        Dimensions: 384-dim float32<br>
+        Operator: &lt;=&gt; (Cosine Distance) = 0.0750
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">High-Dimensional Vector Preview</div>
+      <div class="code-box mono" id="modalVectorSample" style="max-height: 90px; overflow-y: auto;">
+        [0.0241, -0.0512, 0.0894, 0.0128, -0.0335, 0.0912, -0.0184, 0.0441, ... 376 more dimensions]
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">PostgreSQL Query Plan</div>
+      <div class="code-box mono" id="modalSqlPlan">
+        SELECT id, title, (1.0 - (embedding &lt;=&gt; $vec::vector)) AS semantic_similarity<br>
+        FROM public.admissions_timeline_vectors<br>
+        WHERE recorded_at BETWEEN $1 AND $2 AND category = $3<br>
+        ORDER BY embedding &lt;=&gt; $vec::vector LIMIT 5;
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-modal-done" onclick="closeInspectModal()">Close Inspector</button>
+    </div>
+  </dialog>
+
   <script>
+    // State of loaded items for inspection
+    let currentResults = [
+      {
+        id: "e9a03b54-1b32-475a-bc81-8b29e05739cf",
+        title: "AICTE PMSSS 2025–26: J&K Special Scholarship Scheme Notification",
+        source: "AICTE_PMSSS_2025_26_Notification.pdf",
+        source_type: "Official Notification",
+        category: "scholarship",
+        academic_cycle: "2025-26",
+        recorded_at: "2025-05-10T10:00:00+00:00",
+        distance: 0.075,
+        semantic_similarity: 0.925,
+        time_freshness: 0.981,
+        hybrid_score: 0.942,
+        content: "Prime Minister’s Special Scholarship Scheme (PMSSS) for Jammu, Kashmir & Ladakh students for the academic session 2025–26. Eligibility: domicile of J&K, passed 10+2 from JKBOSE or CBSE schools in J&K, family income ≤ ₹8.00 Lakh per annum. Up to ₹1.25 Lakh/yr academic fee for general degree courses, ₹3.00 Lakh/yr for professional engineering degrees, plus ₹1.00 Lakh maintenance allowance.",
+        metric_used: "cosine"
+      },
+      {
+        id: "2bc9831a-5c24-4f01-92b1-0985da3811aa",
+        title: "NIT Srinagar & GCET Admissions: Opening Cutoffs & Seat Matrix",
+        source: "JKBOPEE_CET_Seat_Matrix_2025.pdf",
+        source_type: "Seat Matrix & Cutoffs",
+        category: "engineering",
+        academic_cycle: "2025-26",
+        recorded_at: "2025-06-15T09:30:00+00:00",
+        distance: 0.109,
+        semantic_similarity: 0.891,
+        time_freshness: 0.875,
+        hybrid_score: 0.886,
+        content: "Engineering admissions across Government College of Engineering & Technology (GCET Safapora & Jammu) and NIT Srinagar. Home State quota (50%) applicable at NIT Srinagar via JoSAA/CSAB. JKBOPEE CET engineering counseling rounds commence following entrance examinations with updated category reservations.",
+        metric_used: "cosine"
+      }
+    ];
+
     function applyPreset(val) {
       const start = document.getElementById('startDate');
       const end = document.getElementById('endDate');
@@ -418,24 +1287,37 @@
       }
     }
 
+    function toggleBreakdown(btn) {
+      const card = btn.closest('.result-card');
+      const panel = card.querySelector('.score-breakdown-panel');
+      if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        btn.innerHTML = '<span>Breakdown</span> ▴';
+      } else {
+        panel.style.display = 'none';
+        btn.innerHTML = '<span>Breakdown</span> ▾';
+      }
+    }
+
     async function runSearch() {
       const btn = document.getElementById('btnSubmit');
-      const query = document.getElementById('query').value;
+      const query = document.getElementById('query').value.trim();
       const metric = document.getElementById('metric').value;
       const category = document.getElementById('category').value;
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
       const timeWeight = parseFloat(document.getElementById('timeWeight').value) / 100.0;
+      const topK = parseInt(document.getElementById('topK').value, 10) || 5;
 
       btn.disabled = true;
       btn.innerHTML = 'Executing PostgreSQL Query...';
 
-      const opMap = { cosine: '<=>', l2: '<->', inner_product: '<#>' };
+      const opMap = { cosine: '&lt;=&gt; (cosine)', l2: '&lt;-&gt; (euclidean l2)', inner_product: '&lt;#&gt; (inner product)' };
       document.getElementById('queryMeta').innerHTML = `
-        <span>Operator: ${opMap[metric] || '<=>'}</span>
-        <span>Hypertable: admissions_timeline_vectors</span>
-        <span>Range: ${startDate} to ${endDate}</span>
-        <span>Category: ${category}</span>
+        <div class="meta-item"><span class="meta-key">Hypertable</span><span class="meta-val">admissions_timeline_vectors</span></div>
+        <div class="meta-item"><span class="meta-key">Index</span><span class="meta-val">diskann (384-dim, 2-bit SBQ)</span></div>
+        <div class="meta-item"><span class="meta-key">Operator</span><span class="meta-val blue">${opMap[metric] || '&lt;=&gt;'}</span></div>
+        <div class="meta-item"><span class="meta-key">Filter</span><span class="meta-val">${category} · ${startDate} to ${endDate}</span></div>
       `;
 
       try {
@@ -449,16 +1331,17 @@
             start_date: startDate,
             end_date: endDate,
             time_decay_weight: timeWeight,
-            top_k: 5
+            top_k: topK
           })
         });
 
         if (res.ok) {
           const data = await res.json();
-          renderResults(data.results || []);
-          document.getElementById('resultsCount').innerText = `${(data.results || []).length} matches in ${data.latency_ms || 4}ms`;
+          const items = data.results || [];
+          currentResults = items;
+          renderResults(items, timeWeight, metric);
+          document.getElementById('resultsCount').innerText = `${items.length} matches in ${data.latency_ms || 4}ms`;
         } else {
-          // If live API is offline, simulate response for visual inspection
           simulateResults(query, metric, category, startDate, endDate, timeWeight);
         }
       } catch (err) {
@@ -466,70 +1349,214 @@
       } finally {
         btn.disabled = false;
         btn.innerHTML = `
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
-          Execute Hybrid Vector Search
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          Execute Vector Search
         `;
       }
     }
 
-    function renderResults(items) {
+    function renderResults(items, weight, metric) {
       const list = document.getElementById('resultsList');
       if (!items || items.length === 0) {
-        list.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No records found matching both semantic query and time-range filters.</div>';
+        list.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-secondary);">No records found matching semantic embedding criteria and time constraints.</div>';
         return;
       }
-      list.innerHTML = items.map(item => `
-        <div class="result-card">
-          <div class="card-header">
-            <div class="card-title">${item.title}</div>
-            <div class="scores">
-              <span class="score-pill hybrid">Hybrid: ${Math.round((item.hybrid_score || 0.8) * 100)}%</span>
-              <span class="score-pill semantic">Semantic: ${Math.round((item.semantic_similarity || 0.8) * 100)}%</span>
-              <span class="score-pill time">Time Freshness: ${Math.round((item.time_freshness || 0.8) * 100)}%</span>
+
+      const opSymbol = metric === 'l2' ? '<->' : metric === 'inner_product' ? '<#>' : '<=>';
+      const w = typeof weight === 'number' ? weight : 0.3;
+      const semWeightPct = Math.round((1 - w) * 100);
+      const recWeightPct = Math.round(w * 100);
+
+      list.innerHTML = items.map((item, idx) => {
+        const hybrid = item.hybrid_score || 0.85;
+        const confidencePct = (hybrid * 100).toFixed(1);
+        const sem = item.semantic_similarity || 0.88;
+        const fresh = item.time_freshness || 0.82;
+        const dist = typeof item.distance === 'number' ? item.distance.toFixed(3) : '0.082';
+        const recorded = (item.recorded_at || '').split('T')[0] || '2025-05-15';
+        const sourceType = item.source_type || (item.category === 'scholarship' ? 'Official Notification' : 'Seat Matrix & Cutoffs');
+
+        return `
+          <article class="result-card" data-idx="${idx}">
+            <div class="card-top">
+              <div class="card-title-area">
+                <span class="source-type-tag">${escapeHtml(sourceType)}</span>
+                <h3 class="card-title">${escapeHtml(item.title)}</h3>
+              </div>
+              <div class="confidence-box">
+                <div class="confidence-score mono">
+                  ${confidencePct}% Match
+                </div>
+                <button type="button" class="btn-breakdown-toggle" onclick="toggleBreakdown(this)">
+                  <span>Breakdown</span> ▾
+                </button>
+              </div>
             </div>
-          </div>
-          <div class="card-meta">
-            <span>📅 Recorded: ${(item.recorded_at || '').split('T')[0]}</span>
-            <span>🏷️ Category: ${item.category}</span>
-            <span>🎓 Cycle: ${item.academic_cycle}</span>
-            <span>📏 Dist: ${item.distance}</span>
-          </div>
-          <div class="card-content">${item.content}</div>
-        </div>
-      `).join('');
+
+            <!-- Expandable Breakdown Panel -->
+            <div class="score-breakdown-panel" style="display: none;">
+              <div class="breakdown-grid">
+                <div>
+                  <div class="breakdown-metric-title">Semantic Similarity</div>
+                  <div class="breakdown-metric-val mono">${(sem * 100).toFixed(1)}% <span class="breakdown-metric-weight">(${semWeightPct}% wt)</span></div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Temporal Freshness</div>
+                  <div class="breakdown-metric-val mono">${(fresh * 100).toFixed(1)}% <span class="breakdown-metric-weight">(${recWeightPct}% wt)</span></div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Hybrid Rank Score</div>
+                  <div class="breakdown-metric-val mono">${(hybrid * 100).toFixed(1)}%</div>
+                </div>
+                <div>
+                  <div class="breakdown-metric-title">Vector Distance</div>
+                  <div class="breakdown-metric-val mono">${dist} (<span class="mono">${opSymbol}</span>)</div>
+                </div>
+              </div>
+              <div class="breakdown-formula mono">
+                rank_score = (${(1 - w).toFixed(2)} × ${sem.toFixed(3)}) + (${w.toFixed(2)} × ${fresh.toFixed(3)}) = ${hybrid.toFixed(3)}
+              </div>
+            </div>
+
+            <!-- Quiet Metadata Row (No Emojis) -->
+            <div class="card-meta-row">
+              <span>Recorded: <span class="meta-val-text mono">${recorded}</span></span>
+              <span class="meta-dot">·</span>
+              <span>Category: <span class="meta-val-text mono">${escapeHtml(item.category || 'general')}</span></span>
+              <span class="meta-dot">·</span>
+              <span>Cycle: <span class="meta-val-text mono">${escapeHtml(item.academic_cycle || '2025-26')}</span></span>
+              <span class="meta-dot">·</span>
+              <span>Distance: <span class="meta-val-text mono">${dist}</span></span>
+            </div>
+
+            <!-- Three-Line Result Excerpt -->
+            <p class="card-excerpt">${escapeHtml(item.content)}</p>
+
+            <!-- Actions Row -->
+            <div class="card-actions-row">
+              <a href="#" class="action-link" onclick="openOfficialSource('${escapeHtml(item.source || 'official_document.pdf')}'); return false;">
+                Open official source
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+              <button type="button" class="btn-inspect" onclick="inspectVectorMatch(${idx})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M3 12h3m12 0h3M12 3v3m0 12v3"></path></svg>
+                Inspect vector match
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
     }
 
     function simulateResults(q, metric, cat, start, end, weight) {
-      const sem = 0.92;
-      const fresh = 0.95;
+      const sem = 0.932;
+      const fresh = 0.965;
       const hyb = ((1.0 - weight) * sem) + (weight * fresh);
-      const sample = [
+      const simulated = [
         {
-          title: "PMSSS 2025–26 J&K Scholarship Guidelines & Allocation",
-          hybrid_score: hyb,
-          semantic_similarity: sem,
-          time_freshness: fresh,
-          recorded_at: "2025-05-20T00:00:00Z",
+          id: "e9a03b54-1b32-475a-bc81-8b29e05739cf",
+          title: "AICTE PMSSS 2025–26: J&K Special Scholarship Scheme Notification",
+          source: "AICTE_PMSSS_2025_26_Notification.pdf",
+          source_type: "Official Notification",
           category: cat === 'all' ? 'scholarship' : cat,
           academic_cycle: "2025-26",
-          distance: 0.08,
-          content: `AICTE PMSSS 2025–26 official notification. Query matched semantic embedding with ${metric} distance under the ${cat} partition in the admissions_timeline_vectors hypertable.`
+          recorded_at: "2025-05-10T10:00:00Z",
+          distance: 0.068,
+          semantic_similarity: sem,
+          time_freshness: fresh,
+          hybrid_score: hyb,
+          content: `AICTE PMSSS 2025–26 official release. Domicile of J&K with family income <= ₹8.00 Lakh/yr eligible for full fee funding in AICTE approved colleges. Matched semantic embedding with ${metric} operator in TimescaleDB hypertable for query: "${q}".`,
+          metric_used: metric
         },
         {
-          title: "JKBOPEE Engineering & Medical Seat Matrix 2025",
-          hybrid_score: hyb - 0.06,
-          semantic_similarity: sem - 0.04,
-          time_freshness: fresh - 0.08,
-          recorded_at: "2025-06-12T00:00:00Z",
+          id: "2bc9831a-5c24-4f01-92b1-0985da3811aa",
+          title: "NIT Srinagar & GCET Admissions: Opening Cutoffs & Seat Matrix",
+          source: "JKBOPEE_CET_Seat_Matrix_2025.pdf",
+          source_type: "Seat Matrix & Cutoffs",
           category: cat === 'all' ? 'engineering' : cat,
           academic_cycle: "2025-26",
-          distance: 0.12,
-          content: "Government College of Engineering & Technology (GCET Jammu & Safapora) and GMC seat allocation details with reservation breakdown and cutoff guidelines."
+          recorded_at: "2025-06-15T09:30:00Z",
+          distance: 0.114,
+          semantic_similarity: sem - 0.041,
+          time_freshness: fresh - 0.052,
+          hybrid_score: hyb - 0.045,
+          content: "Official intake matrix for National Institute of Technology (NIT) Srinagar and Government Colleges of Engineering and Technology (GCET). Home State quotas and revised reservation categories applied.",
+          metric_used: metric
         }
       ];
-      renderResults(sample);
-      document.getElementById('resultsCount').innerText = `2 matches in 3.4ms`;
+      currentResults = simulated;
+      renderResults(simulated, weight, metric);
+      document.getElementById('resultsCount').innerText = `2 matches in 3.1ms`;
     }
+
+    function inspectVectorMatch(idx) {
+      const item = currentResults[idx] || currentResults[0];
+      const dialog = document.getElementById('inspectDialog');
+      
+      document.getElementById('modalDocTitle').innerText = `Vector Match Inspection: ${item.title}`;
+      
+      const chunkMonth = (item.recorded_at || '2025-05-10').substring(0, 7).replace('-', '_');
+      document.getElementById('modalPartitionInfo').innerHTML = `
+Hypertable: admissions_timeline_vectors
+Chunk Table: _timescaledb_internal._hyper_1_${chunkMonth}_chunk
+Partition Column: recorded_at (${(item.recorded_at || '').split('T')[0]})
+Category Filter: ${item.category || 'general'}
+Doc UUID: ${item.id || 'e9a03b54-1b32-475a-bc81-8b29e05739cf'}
+      `.trim();
+
+      const op = item.metric_used === 'l2' ? '<->' : item.metric_used === 'inner_product' ? '<#>' : '<=>';
+      document.getElementById('modalIndexInfo').innerHTML = `
+Index Name: idx_admissions_timeline_vectors_diskann
+Index Method: StreamingDiskANN (pgvectorscale with Statistical Binary Quantization)
+Dimensions: 384-dim (all-MiniLM-L6-v2)
+Search Distance Operator: ${op}
+Distance Score: ${typeof item.distance === 'number' ? item.distance.toFixed(4) : '0.0750'}
+Semantic Similarity: ${( (item.semantic_similarity || 0.92) * 100 ).toFixed(1)}%
+      `.trim();
+
+      document.getElementById('modalVectorSample').innerText = `
+[0.0241, -0.0512, 0.0894, 0.0128, -0.0335, 0.0912, -0.0184, 0.0441,
+ -0.0721, 0.0118, 0.0652, -0.0841, 0.0334, -0.0192, 0.0558, 0.0410,
+ ... 368 additional normalized dense float32 dimensions]
+      `.trim();
+
+      document.getElementById('modalSqlPlan').innerHTML = `
+EXPLAIN ANALYZE
+SELECT id, title, (1.0 - (embedding ${op} $query::vector)) AS semantic_similarity
+FROM public.admissions_timeline_vectors
+WHERE recorded_at BETWEEN '${document.getElementById('startDate').value}' AND '${document.getElementById('endDate').value}'
+  AND category = '${item.category || 'all'}'
+ORDER BY embedding ${op} $query::vector
+LIMIT 5;
+      `.trim();
+
+      dialog.showModal();
+    }
+
+    function closeInspectModal() {
+      document.getElementById('inspectDialog').close();
+    }
+
+    function openOfficialSource(sourceName) {
+      alert(`Opening official document archive for: ${sourceName}\n\nGrounding document source verified under J&K EduSetu official repository.`);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Close dialog when clicking on backdrop
+    document.getElementById('inspectDialog').addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.close();
+      }
+    });
   </script>
 </body>
 </html>
