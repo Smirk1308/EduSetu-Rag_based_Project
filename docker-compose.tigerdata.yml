@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  timescaledb-vector:
+    image: timescale/timescaledb-ha:pg16
+    container_name: tigerdata-pgvector-edusetu
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: edusetu_vectors
+      TIMESCALEDB_TELEMETRY: 'off'
+    ports:
+      - "5433:5432"
+    volumes:
+      - tigerdata_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d edusetu_vectors"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  tigerdata_data:
