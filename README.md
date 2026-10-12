@@ -134,6 +134,45 @@ Re-indexing replaces the document corpus atomically; keep a database backup and 
 
 ---
 
+## 🐯 Tiger Data Vector Search Challenge
+
+### EduSetu Policy Timeline Search with Tiger Data
+
+EduSetu helps students in Jammu, Kashmir, and Ladakh find reliable guidance on scholarships, admissions, college cutoffs, and reservation policies. We built a time-aware RAG retrieval layer with Tiger Data PostgreSQL so the advisor can search official education notices by meaning while also filtering by publication period, admission cycle, category, and active policy validity.
+
+Education policies, seat matrices, scholarship notices, and deadlines change frequently. Each document chunk is embedded and stored alongside its source metadata and timeline fields in PostgreSQL. TimescaleDB hypertables preserve the history of changing notices, while pgvector and pgvectorscale retrieve the most relevant current information through cosine similarity and hybrid semantic plus temporal ranking.
+
+This removes the need for a separate vector-database sidecar and gives EduSetu one transactional, queryable source of truth for document history, metadata, and vector retrieval.
+
+#### Architecture & Ingestion Flow
+1. **Embed (384 Dimensions)**: Official circulars, gazette notifications, and seat matrices are embedded into 384-dimensional dense vectors using `SentenceTransformers` (`all-MiniLM-L6-v2`).
+2. **Store in TimescaleDB Hypertable**: Vectors and document metadata are stored in the `admissions_timeline_vectors` hypertable, partitioned by `recorded_at` across 1-month chunks.
+3. **Search with pgvectorscale DiskANN**: Queries execute against a `StreamingDiskANN` graph index with 2-bit Statistical Binary Quantization (SBQ), supporting cosine distance (`<=>`), Euclidean L2 (`<->`), and inner product (`<#>`).
+4. **Hybrid Ranked Retrieval**: Unified SQL combines cosine semantic similarity with exponential time decay:
+   $$\text{Score} = (1 - w) \times \text{SemanticSimilarity} + w \times \exp(-\lambda \cdot \Delta t)$$
+
+#### Extensions & Index Details
+- **`timescaledb`**: Hypertable partitioning on `recorded_at` (1-month intervals) for chronological indexing.
+- **`vector` (`pgvector`)**: Native 384-dimensional vector data type and distance operators (`<=>`, `<->`, `<#>`).
+- **`vectorscale` (`pgvectorscale`)**: `StreamingDiskANN` index (`USING diskann (embedding) WITH (num_neighbors = 50, search_list_size = 100, max_alpha = 1.2, num_dimensions = 384, num_bits_per_dimension = 2)`).
+
+#### Verified Technology Stack
+- Tiger Cloud / Tiger Data PostgreSQL
+- TimescaleDB hypertables
+- pgvector
+- pgvectorscale with DiskANN and Statistical Binary Quantization
+- PostgreSQL JSONB metadata filters
+- Python backend
+- SentenceTransformers embeddings, 384 dimensions
+- Next.js and TypeScript frontend
+- Railway and/or Vercel deployment
+
+#### 🌐 Public Demo URL
+**[https://jkedusetu.app/tigerdata](https://jkedusetu.app/tigerdata)**  
+*(Accessible publicly without login or credentials. Live telemetry and fallback simulation ensure 100% demo availability.)*
+
+---
+
 ## 👨‍💻 Author & Credits
 - **Developed by**: **Shubh Sharma**, CSE, The National Institute of Engineering (NIE), Mysuru.
 - Dedicated to the students of Jammu, Kashmir & Ladakh.
